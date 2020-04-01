@@ -12,12 +12,15 @@ namespace SeaFight
     public abstract class Ship
     {
         public delegate void ShipActionHandler(Ship sender, ShipActionEventArgs eventArgs);
+        public delegate void ShipMovementHandler(Ship sender, int speed);
 
         public int Speed { get; protected set; }
         public int ActionDistance { get; protected set; }
         public int Size { get; protected set; }
         public bool[] ShipCells { get; set; }
+
         public event ShipActionHandler ShipAction;
+        public event ShipMovementHandler ShipMovement;
 
         // Method for raising event from derived classes
         public void OnShipAction(Ship sender, ShipActionEventArgs eventArgs)
@@ -25,6 +28,15 @@ namespace SeaFight
             ShipAction.Invoke(sender, eventArgs);
         }
 
+        public void Move(int speed)
+        {
+            if (speed < 0 || speed > Speed)
+            {
+                throw new ArgumentOutOfRangeException($"Speed must be from 0 to {Speed}");
+            }
+            Console.WriteLine("Choose direction of movement: type in N for North, W for West, S for South, E for East. Type in nothing not to change direction");
+            ShipMovement.Invoke(this, speed);
+        }
         public Ship(int size, int speed)
         {
             int maxSize = Convert.ToInt32(ConfigurationManager.AppSettings["maxShipSize"]);
