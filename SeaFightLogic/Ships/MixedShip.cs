@@ -12,9 +12,9 @@ namespace SeaFight
     {
         public void Heal(int distance)
         {
-            if (distance < 0 || distance > ActionDistance)
+            if (distance < 0 || distance > MaxActionDistance)
             {
-                throw new ArgumentOutOfRangeException($"distance of action must be from 0 to {ActionDistance}");
+                throw new ArgumentOutOfRangeException($"distance of action must be from 0 to {MaxActionDistance}");
             }
 
             ShipActionEventArgs eventArgs = new ShipActionEventArgs(ShipActionType.Heal);
@@ -23,9 +23,9 @@ namespace SeaFight
 
         public void Shoot(int distance)
         {
-            if (distance < 0 || distance > ActionDistance)
+            if (distance < 0 || distance > MaxActionDistance)
             {
-                throw new ArgumentOutOfRangeException($"distance of action must be from 0 to {ActionDistance}");
+                throw new ArgumentOutOfRangeException($"distance of action must be from 0 to {MaxActionDistance}");
             }
 
             ShipActionEventArgs eventArgs = new ShipActionEventArgs(ShipActionType.Shoot);
@@ -40,7 +40,7 @@ namespace SeaFight
             {
                 throw new ArgumentOutOfRangeException($"Action distance of ship must be from 1 to {maxDistance}");
             }
-            this.ActionDistance = actionDistance;
+            this.MaxActionDistance = actionDistance;
         }
     }
 }

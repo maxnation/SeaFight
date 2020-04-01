@@ -15,7 +15,7 @@ namespace SeaFight
         public delegate void ShipMovementHandler(Ship sender, int speed);
 
         public int Speed { get; protected set; }
-        public int ActionDistance { get; protected set; }
+        public int MaxActionDistance { get; protected set; }
         public int Size { get; protected set; }
         public bool[] ShipCells { get; set; }
 
@@ -79,7 +79,7 @@ namespace SeaFight
         {
             bool typesMatch = s1.GetType() == s2.GetType();
             bool speedMatch = s1.Speed == s2.Speed;
-            bool actionDistancesMatch = s1.ActionDistance == s2.ActionDistance;
+            bool actionDistancesMatch = s1.MaxActionDistance == s2.MaxActionDistance;
             return typesMatch && speedMatch && actionDistancesMatch;
         }
 
