@@ -16,7 +16,7 @@ namespace SeaFight
             {
                 throw new ArgumentOutOfRangeException($"Distance of action must be from 0 to {MaxActionDistance}");
             }
-            ShipActionEventArgs eventArgs = new ShipActionEventArgs(ShipActionType.Shoot);
+            ShipActionEventArgs eventArgs = new ShipActionEventArgs(ShipActionType.Shoot, distance);
             OnShipAction(this, eventArgs);
         }
 

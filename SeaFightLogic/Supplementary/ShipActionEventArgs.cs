@@ -9,10 +9,12 @@ namespace SeaFightLogic.Supplementary
     public class ShipActionEventArgs
     {
         public ShipActionType ShipAction;
+        public int ActionDistance;
 
-        public ShipActionEventArgs(ShipActionType shipActionType)
+        public ShipActionEventArgs(ShipActionType shipActionType, int actionDistance)
         {
             ShipAction = shipActionType;
+            ActionDistance = actionDistance;
         }
     }
 }
