@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SeaFight
+namespace SeaFightLogic
 {
    public interface IHealing
     {

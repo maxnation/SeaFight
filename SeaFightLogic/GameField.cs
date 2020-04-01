@@ -11,7 +11,6 @@ namespace SeaFightLogic
         private Cell[,] cells;
         private readonly int quadrantSideLength;
 
-
         public GameField(int quadrantSideLength)
         {
             cells = new Cell[quadrantSideLength * 2, quadrantSideLength * 2];
@@ -25,5 +24,7 @@ namespace SeaFightLogic
                 }
             }
         }
+
+
     }
 }

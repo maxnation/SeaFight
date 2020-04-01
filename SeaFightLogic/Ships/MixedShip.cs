@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Configuration;
 using SeaFightLogic.Supplementary;
 
-namespace SeaFight
+namespace SeaFightLogic
 {
     public class MixedShip : Ship, IHealing, IShooting
     {

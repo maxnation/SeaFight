@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Configuration;
 using SeaFightLogic.Supplementary;
 
-namespace SeaFight
+namespace SeaFightLogic
 {
 
     public abstract class Ship

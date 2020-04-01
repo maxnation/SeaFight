@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SeaFight
+namespace SeaFightLogic
 {
     public class Warship : Ship, IShooting
     {        
