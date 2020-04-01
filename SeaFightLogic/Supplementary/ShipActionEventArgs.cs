@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SeaFightLogic.Supplementary
 {
-    public class ShipActionEventArgs
+    public class ShipActionEventArgs: EventArgs
     {
         public ShipActionType ShipAction;
         public int ActionDistance;

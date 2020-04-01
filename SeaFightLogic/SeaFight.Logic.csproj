@@ -42,6 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Cell.cs" />
+    <Compile Include="GameField.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Ships\HealingShip.cs" />
     <Compile Include="Ships\Interfaces\IHealing.cs" />
@@ -53,6 +55,7 @@
     <Compile Include="Supplementary\Direction.cs" />
     <Compile Include="Supplementary\ShipActionEventArgs.cs" />
     <Compile Include="Supplementary\ShipActionType.cs" />
+    <Compile Include="Supplementary\ShipMovementEventArgs.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
