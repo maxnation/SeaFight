@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2019
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeaFight", "ConsoleApp1\SeaFight.csproj", "{C17C077A-56FC-4737-BB5E-60C2EE2A2152}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeaFight.Logic", "SeaFightLogic\SeaFight.Logic.csproj", "{C481DF7D-F877-4485-A95C-7EF4A48C0990}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C17C077A-56FC-4737-BB5E-60C2EE2A2152}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C17C077A-56FC-4737-BB5E-60C2EE2A2152}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C17C077A-56FC-4737-BB5E-60C2EE2A2152}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C17C077A-56FC-4737-BB5E-60C2EE2A2152}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C481DF7D-F877-4485-A95C-7EF4A48C0990}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C481DF7D-F877-4485-A95C-7EF4A48C0990}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C481DF7D-F877-4485-A95C-7EF4A48C0990}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C481DF7D-F877-4485-A95C-7EF4A48C0990}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6C7EA3BE-AD61-450C-8227-49F2DCE38C43}
+	EndGlobalSection
+EndGlobal
