@@ -51,6 +51,7 @@
     <Compile Include="Ships\Warship.cs" />
     <Compile Include="Supplementary\CartesianCoordinate.cs" />
     <Compile Include="Supplementary\Direction.cs" />
+    <Compile Include="Supplementary\ShipActionEventArgs.cs" />
     <Compile Include="Supplementary\ShipActionType.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -4,16 +4,26 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Configuration;
+using SeaFightLogic.Supplementary;
 
 namespace SeaFight
 {
 
     public abstract class Ship
     {
+        public delegate void ShipActionHandler(Ship sender, ShipActionEventArgs eventArgs);
+
         public int Speed { get; protected set; }
         public int ActionDistance { get; protected set; }
         public int Size { get; protected set; }
         public bool[] ShipCells { get; set; }
+        public event ShipActionHandler ShipAction;
+
+        // Method for raising event from derived classes
+        public void OnShipAction(Ship sender, ShipActionEventArgs eventArgs)
+        {
+            ShipAction.Invoke(sender, eventArgs);
+        }
 
         public Ship(int size, int speed)
         {
@@ -50,6 +60,7 @@ namespace SeaFight
 
             return shipState;
         }
+
 
         public static bool operator ==(Ship s1, Ship s2)
         {
