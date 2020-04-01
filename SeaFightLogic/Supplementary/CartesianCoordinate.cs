@@ -8,7 +8,7 @@ namespace SeaFightLogic.Supplementary
         public int Y { get; }
         public int Quadrant { get; }
 
-        public CartesianCoordinate(int x, int y, int quadrant)
+         public CartesianCoordinate(int x, int y, int quadrant)
         {
             if (quadrant < 0 || quadrant > 3)
             {
@@ -24,7 +24,7 @@ namespace SeaFightLogic.Supplementary
             }
 
             X = x;
-            Y = x;
+            Y = y;
             Quadrant = quadrant;
 
         }

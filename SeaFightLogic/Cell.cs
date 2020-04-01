@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SeaFightLogic
 {
-    class Cell
+    public class Cell
     {
         public bool IsOccupied { get; set; }
         public Ship Ship; // Reference on ship which occupies this cell   
