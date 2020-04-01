@@ -14,7 +14,7 @@ namespace SeaFight
         public delegate void ShipActionHandler(Ship sender, ShipActionEventArgs eventArgs);
         public delegate void ShipMovementHandler(Ship sender, int speed);
 
-        public int Speed { get; protected set; }
+        public int MaxSpeed { get; protected set; }
         public int MaxActionDistance { get; protected set; }
         public int Size { get; protected set; }
         public bool[] ShipCells { get; set; }
@@ -30,9 +30,9 @@ namespace SeaFight
 
         public void Move(int speed)
         {
-            if (speed < 0 || speed > Speed)
+            if (speed < 0 || speed > MaxSpeed)
             {
-                throw new ArgumentOutOfRangeException($"Speed must be from 0 to {Speed}");
+                throw new ArgumentOutOfRangeException($"Speed must be from 0 to {MaxSpeed}");
             }
             Console.WriteLine("Choose direction of movement: type in N for North, W for West, S for South, E for East. Type in nothing not to change direction");
             ShipMovement.Invoke(this, speed);
@@ -45,7 +45,7 @@ namespace SeaFight
             {
                 throw new ArgumentOutOfRangeException($"Size of ship must be from 1 to {maxSize}");
             }       
-            this.Speed = speed;
+            this.MaxSpeed = speed;
 
             ShipCells = new bool[size];
 
@@ -78,7 +78,7 @@ namespace SeaFight
         public static bool operator ==(Ship s1, Ship s2)
         {
             bool typesMatch = s1.GetType() == s2.GetType();
-            bool speedMatch = s1.Speed == s2.Speed;
+            bool speedMatch = s1.MaxSpeed == s2.MaxSpeed;
             bool actionDistancesMatch = s1.MaxActionDistance == s2.MaxActionDistance;
             return typesMatch && speedMatch && actionDistancesMatch;
         }
