@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Configuration;
 
 namespace SeaFight
 {
@@ -13,23 +14,14 @@ namespace SeaFight
         public int ActionDistance { get; protected set; }
         public int Size { get; protected set; }
 
-        public Ship(int size, int speed, int actionDistance)
+        public Ship(int size, int speed)
         {
-            if (size < 1 || size > 5)
+            int maxSize = Convert.ToInt32(ConfigurationManager.AppSettings["maxShipSize"]);
+            if (size < 1 || size > maxSize)
             {
                 throw new ArgumentOutOfRangeException("Size of ship must be from 1 to 5");
-            }
-            if (speed < 1 || speed > 5)
-            {
-                throw new ArgumentOutOfRangeException("Speed of ship must be from 1 to 5");
-            }
-            if (actionDistance < 1 || actionDistance > 5)
-            {
-                throw new ArgumentOutOfRangeException("Size of ship must be from 1 to 5");
-            }
-
-            Speed = speed;
-            ActionDistance = actionDistance;
+            }       
+            this.Speed = speed;          
         }
 
         public static bool operator ==(Ship s1, Ship s2)
