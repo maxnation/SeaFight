@@ -37,6 +37,7 @@ namespace SeaFight
             Console.WriteLine("Choose direction of movement: type in N for North, W for West, S for South, E for East. Type in nothing not to change direction");
             ShipMovement.Invoke(this, speed);
         }
+
         public Ship(int size, int speed)
         {
             int maxSize = Convert.ToInt32(ConfigurationManager.AppSettings["maxShipSize"]);
@@ -73,7 +74,7 @@ namespace SeaFight
             return shipState;
         }
 
-
+        #region operators
         public static bool operator ==(Ship s1, Ship s2)
         {
             bool typesMatch = s1.GetType() == s2.GetType();
@@ -86,5 +87,6 @@ namespace SeaFight
         {
             return !(s1 == s2);
         }
+        #endregion
     }
 }
