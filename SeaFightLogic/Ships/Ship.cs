@@ -20,7 +20,7 @@ namespace SeaFight
             int maxSize = Convert.ToInt32(ConfigurationManager.AppSettings["maxShipSize"]);
             if (size < 1 || size > maxSize)
             {
-                throw new ArgumentOutOfRangeException("Size of ship must be from 1 to 5");
+                throw new ArgumentOutOfRangeException($"Size of ship must be from 1 to {maxSize}");
             }       
             this.Speed = speed;
 
@@ -34,11 +34,21 @@ namespace SeaFight
             Size = size;
         }
 
-        public void ShowState()
+        public Dictionary<string, string> ShowState()
         {
-            Console.WriteLine("Ship type: {0}", this.GetType().Name);
+            string shipType = this.GetType().Name; 
+
             int uninjuredPartsQuantity = ShipCells.Count(c => c == true);
-            Console.WriteLine("Ship wholeness: {0}/{1}", uninjuredPartsQuantity, ShipCells.Length);
+            string shipWholeness = string.Format("Ship wholeness: {0}/{1}", uninjuredPartsQuantity, ShipCells.Length);
+
+            // In next updates method should return json object instead 
+            Dictionary<string, string> shipState = new Dictionary<string, string>
+            {
+                { "shipType", shipType },
+                { "shipWholeness", shipWholeness }
+            };
+
+            return shipState;
         }
 
         public static bool operator ==(Ship s1, Ship s2)

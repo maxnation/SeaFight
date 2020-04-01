@@ -23,7 +23,7 @@ namespace SeaFight
         {
             int maxDistance = Convert.ToInt32(ConfigurationManager.AppSettings["mixedShipDistance"]);
 
-            if (actionDistance < 1 || actionDistance > 5)
+            if (actionDistance < 1 || actionDistance > maxDistance)
             {
                 throw new ArgumentOutOfRangeException("Size of ship must be from 1 to 5");
             }
