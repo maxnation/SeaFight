@@ -26,11 +26,44 @@ namespace SeaFightLogic
             }
         }
 
-
-        //TODO: Arr index to Cartesian coords
-        private CartesianCoordinate ConvertArrIndexToCartesianCoords(int line, int colummn)
+        public CartesianCoordinate ConvertArrIndexToCartesianCoords(int line, int column)
         {
-            CartesianCoordinate cartesianCoordinate = new CartesianCoordinate(0, 0, 0);
+            int x = -1;
+            int y = -1;
+            int quadrant = -1;
+
+            // Get quadrant value
+            if (column >= quadrantSideLength)
+            {
+                quadrant = line >= quadrantSideLength ? 3 : 0;
+            }
+            else
+            {
+                quadrant = line >= quadrantSideLength ? 2 : 1;
+            }
+
+            // Get X and Y values
+            switch (quadrant)
+            {
+                case 0:
+                    x = column - quadrantSideLength;
+                    y = quadrantSideLength - line-1;
+                    break;
+                case 1:
+                    x = quadrantSideLength - column-1;
+                    y = quadrantSideLength - line-1;
+                    break;
+                case 2:
+                    x = quadrantSideLength - column-1;
+                    y = line - quadrantSideLength;
+                    break;
+                case 3:
+                    x = column - quadrantSideLength;
+                    y = line - quadrantSideLength;
+                    break;
+            }
+
+            CartesianCoordinate cartesianCoordinate = new CartesianCoordinate(x, y, quadrant);
             return cartesianCoordinate;
         }
 
