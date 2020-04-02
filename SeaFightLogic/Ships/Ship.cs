@@ -18,6 +18,9 @@ namespace SeaFightLogic
         public int MaxActionDistance { get; protected set; }
         public int Size { get; protected set; }
         public bool[] ShipCells { get; set; }
+        public Direction Direction { get; set; }
+
+         public CartesianCoordinate Head { get; set; }
 
         public event ShipActionHandler ShipAction;
         public event ShipMovementHandler ShipMovement;

@@ -13,8 +13,11 @@ namespace SeaFight
     {
         static void Main(string[] args)
         {
-           
-        }
+            GameField gameField = new GameField(8);
+            Warship s1 = new Warship(5, 3, 3);
+ 
+            gameField.AddShip(s1, 0, 2, 3, Direction.West);
+         }
 
         
     }

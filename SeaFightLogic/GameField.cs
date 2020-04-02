@@ -47,14 +47,14 @@ namespace SeaFightLogic
             {
                 case 0:
                     x = column - quadrantSideLength;
-                    y = quadrantSideLength - line-1;
+                    y = quadrantSideLength - line - 1;
                     break;
                 case 1:
-                    x = quadrantSideLength - column-1;
-                    y = quadrantSideLength - line-1;
+                    x = quadrantSideLength - column - 1;
+                    y = quadrantSideLength - line - 1;
                     break;
                 case 2:
-                    x = quadrantSideLength - column-1;
+                    x = quadrantSideLength - column - 1;
                     y = line - quadrantSideLength;
                     break;
                 case 3:
@@ -181,6 +181,97 @@ namespace SeaFightLogic
             }
 
             return IsCellsLineFree;
+        }
+
+        public void AddShip(Ship ship,
+                            int quadrant, int x, int y,
+                            Direction direction)
+        {
+            if (quadrant < 0 || quadrant > 3)
+            {
+                throw new ArgumentOutOfRangeException("Value of quadrant must be integer value from 0 to 3");
+            }
+            if (x < 0 || x > quadrantSideLength - 1 || y < 0 || y > quadrantSideLength - 1)
+            {
+                throw new ArgumentOutOfRangeException($"X and Y must be integer values from 0 to {quadrantSideLength}");
+            }
+
+            CartesianCoordinate headCartesianCoord = new CartesianCoordinate(x, y, quadrant);
+
+            int line = -1;
+            int column = -1;
+
+            ConvertCartesianCoordsToArrIndex(headCartesianCoord, ref line, ref column);
+
+            Direction reverseDirection = 0;
+
+            // Check reverse direction
+            switch (direction)
+            {
+                case Direction.North:
+                    reverseDirection = Direction.South;
+                    break;
+                case Direction.South:
+                    reverseDirection = Direction.North;
+                    break;
+                case Direction.West:
+                    reverseDirection = Direction.East;
+                    break;
+                case Direction.East:
+                    reverseDirection = Direction.West;
+                    break;
+            }
+
+            bool isCellsLineFree = IsCellsLineFree(line, column, ship.Size, reverseDirection);
+
+            if (isCellsLineFree)
+            {
+                ship.Head = headCartesianCoord;
+
+                int i = 0;
+                switch (direction)
+                {
+                    case Direction.North:
+                        while (i < ship.Size)
+                        {
+                            cells[line + i, column].IsOccupied = true;
+                            cells[line + i, column].Ship = ship;
+                            i++;
+                        }
+                        break;
+
+                    case Direction.West:
+                        while (i < ship.Size)
+                        {
+                            cells[line, column + i].IsOccupied = true;
+                            cells[line, column + i].Ship = ship;
+                            i++;
+                        }
+                        break;
+
+                    case Direction.South:
+                        while (i < ship.Size)
+                        {
+                            cells[line - i, column].IsOccupied = true;
+                            cells[line - i, column].Ship = ship;
+                            i++;
+                        }
+                        break;
+
+                    case Direction.East:
+                        while (i < ship.Size)
+                        {
+                            cells[line, column - i].IsOccupied = true;
+                            cells[line, column - i].Ship = ship;
+                            i++;
+                        }
+                        break;
+                }
+            }
+            else
+            {
+                throw new Exception("Error! Cannot place ship. Some of the cells are occupied by another ship!");
+            }
         }
     }
 }
