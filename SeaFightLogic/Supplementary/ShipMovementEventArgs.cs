@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SeaFightLogic.Supplementary
 {
-    class ShipMovementEventArgs : EventArgs
+  public  class ShipMovementEventArgs : EventArgs
     {
         public int Speed { get; }
 

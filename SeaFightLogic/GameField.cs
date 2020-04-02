@@ -117,7 +117,7 @@ namespace SeaFightLogic
             }
         }
 
-        private bool IsCellsLineFree(int line, int column, int size, Direction direction)
+        private bool IsCellsLineFree(int line, int column, int size, Direction direction, int shift =0)
         {
             bool IsCellsLineFree = true;
             int i = 0;
@@ -129,7 +129,7 @@ namespace SeaFightLogic
                     case Direction.North:
                         while (i < size)
                         {
-                            if (cells[line - i, column].IsOccupied == true)
+                            if (cells[line - i - shift, column].IsOccupied == true)
                             {
                                 IsCellsLineFree = false;
                                 break;
@@ -142,7 +142,7 @@ namespace SeaFightLogic
                     case Direction.West:
                         while (i < size)
                         {
-                            if (cells[line, column - i].IsOccupied == true)
+                            if (cells[line, column - i - shift].IsOccupied == true)
                             {
                                 IsCellsLineFree = false;
                                 break;
@@ -153,7 +153,7 @@ namespace SeaFightLogic
                     case Direction.South:
                         while (i < size)
                         {
-                            if (cells[line + i, column].IsOccupied == true)
+                            if (cells[line + i + shift, column].IsOccupied == true)
                             {
                                 IsCellsLineFree = false;
                                 break;
@@ -164,7 +164,7 @@ namespace SeaFightLogic
                     case Direction.East:
                         while (i < size)
                         {
-                            if (cells[line, column + i].IsOccupied == true)
+                            if (cells[line, column + i + shift].IsOccupied == true)
                             {
                                 IsCellsLineFree = false;
                                 break;
@@ -199,6 +199,7 @@ namespace SeaFightLogic
             CartesianCoordinate headCartesianCoord = new CartesianCoordinate(x, y, quadrant);
             ship.Direction = direction;
             ship.ShipAction += this.OnShipAction;
+            ship.ShipMovement += this.OnShipMovement;
             int line = -1;
             int column = -1;
 
@@ -361,6 +362,76 @@ namespace SeaFightLogic
 
                 // if quantity of 'true' cells in ShipCells = 0, remove ship from field
             }
+        }
+
+        public void OnShipMovement(Ship sender, ShipMovementEventArgs eventArgs)
+        {
+            // Check if there free cells to move on
+            int shipHeadLine = -1;
+            int shipHeadColumn = -1;
+            ConvertCartesianCoordsToArrIndex(sender.Head, ref shipHeadLine, ref shipHeadColumn);
+            bool isCellsLineFree = IsCellsLineFree(shipHeadLine, shipHeadColumn, eventArgs.Speed, sender.Direction, 1);
+
+            if(isCellsLineFree == false)
+            {
+                throw new Exception("Cannot move ship on this direction");
+            }
+
+            //Cleaning up cells before ship occupies another cells
+            RemoveShipFromField(sender);
+
+            int newShipHeadLine = shipHeadLine;
+            int newShipHeadColumn = shipHeadColumn;
+
+            int i = 0;
+
+            // Shifting ship to new position
+            switch (sender.Direction)
+            {
+                case Direction.North:
+                    while (i < sender.Size)
+                    {
+                        cells[shipHeadLine - eventArgs.Speed + i, shipHeadColumn].IsOccupied = true;
+                        cells[shipHeadLine - eventArgs.Speed + i, shipHeadColumn].Ship = sender;
+                        i++;
+                    }
+                    newShipHeadLine = shipHeadLine - eventArgs.Speed;
+                    break;
+
+                case Direction.West:
+                    while (i < sender.Size)
+                    {
+                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed+i].IsOccupied = true;
+                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed+i].Ship = sender;
+                        i++;
+                    }
+                    newShipHeadColumn = shipHeadColumn - eventArgs.Speed;
+                    break;
+
+                case Direction.South:
+                    while (i < sender.Size)
+                    {
+                        cells[shipHeadLine + eventArgs.Speed-i, shipHeadColumn].IsOccupied = true;
+                        cells[shipHeadLine + eventArgs.Speed-i, shipHeadColumn].Ship = sender;
+                        i++;
+                    }
+                    newShipHeadLine = shipHeadLine + eventArgs.Speed;
+                    break;
+
+                case Direction.East:
+                    while (i < sender.Size)
+                    {
+                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed-i].IsOccupied = true;
+                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed-i].Ship = sender;
+                        i++;
+                    }
+                    newShipHeadColumn = shipHeadColumn + eventArgs.Speed;
+                    break;
+            }
+
+            // Assign new Head Coordinate
+            CartesianCoordinate newHeadCoord = this.ConvertArrIndexToCartesianCoords(newShipHeadLine, newShipHeadColumn);
+            sender.Head = newHeadCoord;
         }
 
         private void RemoveShipFromField(Ship ship)

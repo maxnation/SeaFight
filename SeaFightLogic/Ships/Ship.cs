@@ -12,7 +12,7 @@ namespace SeaFightLogic
     public abstract class Ship
     {
         public delegate void ShipActionHandler(Ship sender, ShipActionEventArgs eventArgs);
-        public delegate void ShipMovementHandler(Ship sender, int speed);
+        public delegate void ShipMovementHandler(Ship sender, ShipMovementEventArgs eventArgs);
 
         public int MaxSpeed { get; protected set; }
         public int MaxActionDistance { get; protected set; }
@@ -20,7 +20,7 @@ namespace SeaFightLogic
         public bool[] ShipCells { get; set; }
         public Direction Direction { get; set; }
 
-         public CartesianCoordinate Head { get; set; }
+        public CartesianCoordinate Head { get; set; }
 
         public event ShipActionHandler ShipAction;
         public event ShipMovementHandler ShipMovement;
@@ -31,14 +31,15 @@ namespace SeaFightLogic
             ShipAction.Invoke(sender, eventArgs);
         }
 
-        public void Move(int speed)
+        public void Move(int speed, Direction direction)
         {
             if (speed < 0 || speed > MaxSpeed)
             {
                 throw new ArgumentOutOfRangeException($"Speed must be from 0 to {MaxSpeed}");
             }
-            Console.WriteLine("Choose direction of movement: type in N for North, W for West, S for South, E for East. Type in nothing not to change direction");
-            ShipMovement.Invoke(this, speed);
+
+            ShipMovementEventArgs eventArgs = new ShipMovementEventArgs(speed);
+            ShipMovement.Invoke(this, eventArgs);
         }
 
         public Ship(int size, int speed)
@@ -47,7 +48,7 @@ namespace SeaFightLogic
             if (size < 1 || size > maxSize)
             {
                 throw new ArgumentOutOfRangeException($"Size of ship must be from 1 to {maxSize}");
-            }       
+            }
             this.MaxSpeed = speed;
 
             ShipCells = new bool[size];
@@ -62,12 +63,12 @@ namespace SeaFightLogic
 
         public Dictionary<string, string> ShowState()
         {
-            string shipType = this.GetType().Name; 
+            string shipType = this.GetType().Name;
 
             int uninjuredPartsQuantity = ShipCells.Count(c => c == true);
             string shipWholeness = string.Format("Ship wholeness: {0}/{1}", uninjuredPartsQuantity, ShipCells.Length);
 
-             // In next updates method should return json object instead 
+            // In next updates method should return json object instead 
             Dictionary<string, string> shipState = new Dictionary<string, string>
             {
                 { "shipType", shipType },
