@@ -28,5 +28,10 @@ namespace SeaFightLogic.Supplementary
             Quadrant = quadrant;
 
         }
+
+        public override string ToString()
+        {
+            return String.Format(@"Quandrant: {0}, X: {1}, Y: {2}", Quadrant, X, Y);
+        }
     }
 }

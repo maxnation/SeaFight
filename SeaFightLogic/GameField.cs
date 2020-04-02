@@ -9,6 +9,8 @@ namespace SeaFightLogic
 {
     public class GameField
     {
+        private List<Ship> placedShips;
+
         private Cell[,] cells;
         private readonly int quadrantSideLength;
 
@@ -24,6 +26,8 @@ namespace SeaFightLogic
                     cells[i, j] = new Cell();
                 }
             }
+
+            placedShips = new List<Ship>();
         }
 
         private CartesianCoordinate ConvertArrIndexToCartesianCoords(int line, int column)
@@ -117,7 +121,7 @@ namespace SeaFightLogic
             }
         }
 
-        private bool IsCellsLineFree(int line, int column, int size, Direction direction, int shift =0)
+        private bool IsCellsLineFree(int line, int column, int size, Direction direction, int shift = 0)
         {
             bool IsCellsLineFree = true;
             int i = 0;
@@ -269,6 +273,7 @@ namespace SeaFightLogic
                         }
                         break;
                 }
+                placedShips.Add(ship);
             }
             else
             {
@@ -360,7 +365,12 @@ namespace SeaFightLogic
                     targetShip.ShipCells[shipStateArrCell] = true;
                 }
 
-                // if quantity of 'true' cells in ShipCells = 0, remove ship from field
+                // if there is no uninjured parts left, remove ship from field
+                if (targetShip.ShipCells.Where(c => c == true).Count() == 0)
+                {
+                    this.RemoveShipFromField(targetShip);
+                    placedShips.Remove(targetShip);
+                }
             }
         }
 
@@ -372,7 +382,7 @@ namespace SeaFightLogic
             ConvertCartesianCoordsToArrIndex(sender.Head, ref shipHeadLine, ref shipHeadColumn);
             bool isCellsLineFree = IsCellsLineFree(shipHeadLine, shipHeadColumn, eventArgs.Speed, sender.Direction, 1);
 
-            if(isCellsLineFree == false)
+            if (isCellsLineFree == false)
             {
                 throw new Exception("Cannot move ship on this direction");
             }
@@ -401,8 +411,8 @@ namespace SeaFightLogic
                 case Direction.West:
                     while (i < sender.Size)
                     {
-                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed+i].IsOccupied = true;
-                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed+i].Ship = sender;
+                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed + i].IsOccupied = true;
+                        cells[shipHeadLine, shipHeadColumn - eventArgs.Speed + i].Ship = sender;
                         i++;
                     }
                     newShipHeadColumn = shipHeadColumn - eventArgs.Speed;
@@ -411,8 +421,8 @@ namespace SeaFightLogic
                 case Direction.South:
                     while (i < sender.Size)
                     {
-                        cells[shipHeadLine + eventArgs.Speed-i, shipHeadColumn].IsOccupied = true;
-                        cells[shipHeadLine + eventArgs.Speed-i, shipHeadColumn].Ship = sender;
+                        cells[shipHeadLine + eventArgs.Speed - i, shipHeadColumn].IsOccupied = true;
+                        cells[shipHeadLine + eventArgs.Speed - i, shipHeadColumn].Ship = sender;
                         i++;
                     }
                     newShipHeadLine = shipHeadLine + eventArgs.Speed;
@@ -421,8 +431,8 @@ namespace SeaFightLogic
                 case Direction.East:
                     while (i < sender.Size)
                     {
-                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed-i].IsOccupied = true;
-                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed-i].Ship = sender;
+                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed - i].IsOccupied = true;
+                        cells[shipHeadLine, shipHeadColumn + eventArgs.Speed - i].Ship = sender;
                         i++;
                     }
                     newShipHeadColumn = shipHeadColumn + eventArgs.Speed;
@@ -483,5 +493,31 @@ namespace SeaFightLogic
             }
         }
 
+
+        public Dictionary<string, string> FieldState(IComparer<Ship> comparer)
+        {
+            Dictionary<string, string> dict = new Dictionary<string, string>();
+
+            var fieldLength = quadrantSideLength * 2;
+            var quantityOfShips = placedShips.Count;
+            placedShips.Sort(comparer);
+
+            var sortedSequence = placedShips.Select(s => new { headCoords = s.Head.ToString(), s.GetType().Name });
+            StringBuilder sb = new StringBuilder();
+            foreach (var item in sortedSequence)
+            {
+                sb.AppendLine($"Head coords: {item.headCoords}, Ship Type: {item.Name} \n");
+            }
+
+            dict.Add("shipsSortedByRemoteness", sb.ToString());
+            dict.Add("fieldSize", $"{fieldLength}x{fieldLength}");
+            dict.Add("quantityOfShips", quantityOfShips.ToString());
+            return dict;
+        }
+
+        public Dictionary<string, string> FieldState()
+        {
+            return FieldState(new RemotenessFromCenterComparer());
+        }
     }
 }

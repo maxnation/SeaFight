@@ -15,12 +15,16 @@ namespace SeaFight
         {
             GameField field = new GameField(8);
 
-            Warship s1 = new Warship(5, 3, 3);
+            Warship s1 = new Warship(1, 3, 3);
 
             field.AddShip(s1, 0, 2, 3, Direction.East);
 
-            s1.Move(2, Direction.East);
- 
+            Warship s2 = new Warship(1, 3, 3);
+
+            field.AddShip(s2,1, 2, 3, Direction.East);
+
+            var state = field.FieldState();
+            Console.WriteLine(state["shipsSortedByRemoteness"]);
         }
 
     }
