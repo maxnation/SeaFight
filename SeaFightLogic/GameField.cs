@@ -318,8 +318,8 @@ namespace SeaFightLogic
             // Get target cell
             int targetArrLine = -1;
             int targetArrColumn = -1;
-            GetTargetIndex(sender, eventArgs, ref targetArrLine, ref targetArrColumn);    
-            Cell targetCell = cells[targetArrLine, targetArrColumn];      
+            GetTargetIndex(sender, eventArgs, ref targetArrLine, ref targetArrColumn);
+            Cell targetCell = cells[targetArrLine, targetArrColumn];
 
             // If there is a ship in the target cell
             if (targetCell.IsOccupied)
@@ -362,5 +362,55 @@ namespace SeaFightLogic
                 // if quantity of 'true' cells in ShipCells = 0, remove ship from field
             }
         }
+
+        private void RemoveShipFromField(Ship ship)
+        {
+            // Get arr index of head coordinate
+            CartesianCoordinate shipHeadCoords = ship.Head;
+            int headArrLine = -1;
+            int headArrColumn = -1;
+            ConvertCartesianCoordsToArrIndex(shipHeadCoords, ref headArrLine, ref headArrColumn);
+
+            int i = 0;
+            switch (ship.Direction)
+            {
+                case Direction.North:
+                    while (i < ship.Size)
+                    {
+                        cells[headArrLine + i, headArrColumn].IsOccupied = false;
+                        cells[headArrLine + i, headArrColumn].Ship = null;
+                        i++;
+                    }
+                    break;
+
+                case Direction.West:
+                    while (i < ship.Size)
+                    {
+                        cells[headArrLine, headArrColumn + i].IsOccupied = false;
+                        cells[headArrLine, headArrColumn + i].Ship = null;
+                        i++;
+                    }
+                    break;
+
+                case Direction.South:
+                    while (i < ship.Size)
+                    {
+                        cells[headArrLine - i, headArrColumn].IsOccupied = false;
+                        cells[headArrLine - i, headArrColumn].Ship = null;
+                        i++;
+                    }
+                    break;
+
+                case Direction.East:
+                    while (i < ship.Size)
+                    {
+                        cells[headArrLine, headArrColumn - i].IsOccupied = false;
+                        cells[headArrLine, headArrColumn - i].Ship = null;
+                        i++;
+                    }
+                    break;
+            }
+        }
+
     }
 }
