@@ -13,8 +13,7 @@ namespace SeaFight
     {
         static void Main(string[] args)
         {
-            GameField gameField = new GameField(8);
-            gameField.ConvertArrIndexToCartesianCoords(7, 8);
+           
         }
 
         

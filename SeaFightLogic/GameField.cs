@@ -26,7 +26,7 @@ namespace SeaFightLogic
             }
         }
 
-        public CartesianCoordinate ConvertArrIndexToCartesianCoords(int line, int column)
+        private CartesianCoordinate ConvertArrIndexToCartesianCoords(int line, int column)
         {
             int x = -1;
             int y = -1;
@@ -115,6 +115,72 @@ namespace SeaFightLogic
 
                 return cells[line, column];
             }
+        }
+
+        private bool IsCellsLineFree(int line, int column, int size, Direction direction)
+        {
+            bool IsCellsLineFree = true;
+            int i = 0;
+
+            try
+            {
+                switch (direction)
+                {
+                    case Direction.North:
+                        while (i < size)
+                        {
+                            if (cells[line - i, column].IsOccupied == true)
+                            {
+                                IsCellsLineFree = false;
+                                break;
+                            }
+                            i++;
+                        }
+
+                        break;
+
+                    case Direction.West:
+                        while (i < size)
+                        {
+                            if (cells[line, column - i].IsOccupied == true)
+                            {
+                                IsCellsLineFree = false;
+                                break;
+                            }
+                            i++;
+                        }
+                        break;
+                    case Direction.South:
+                        while (i < size)
+                        {
+                            if (cells[line + i, column].IsOccupied == true)
+                            {
+                                IsCellsLineFree = false;
+                                break;
+                            }
+                            i++;
+                        }
+                        break;
+                    case Direction.East:
+                        while (i < size)
+                        {
+                            if (cells[line, column + i].IsOccupied == true)
+                            {
+                                IsCellsLineFree = false;
+                                break;
+                            }
+                            i++;
+                        }
+                        break;
+                }
+            }
+            catch (IndexOutOfRangeException ex)
+            {
+                ex.Data.Add("UserMessage", "Part of the ship goes beyond the field bounds");
+                throw;
+            }
+
+            return IsCellsLineFree;
         }
     }
 }
