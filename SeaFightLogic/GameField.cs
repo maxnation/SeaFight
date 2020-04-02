@@ -198,6 +198,7 @@ namespace SeaFightLogic
 
             CartesianCoordinate headCartesianCoord = new CartesianCoordinate(x, y, quadrant);
             ship.Direction = direction;
+            ship.ShipAction += this.OnShipAction;
             int line = -1;
             int column = -1;
 
@@ -274,7 +275,6 @@ namespace SeaFightLogic
             }
         }
 
-
         private void GetTargetIndex(Ship sender, ShipActionEventArgs eventArgs,
                                   ref int targetArrLine, ref int targetArrColumn)
         {
@@ -309,6 +309,57 @@ namespace SeaFightLogic
                         targetArrColumn = senderHeadColumn + eventArgs.ActionDistance;
                         break;
                     }
+            }
+        }
+
+        // Method for listening events of Ship
+        private void OnShipAction(Ship sender, ShipActionEventArgs eventArgs)
+        {
+            // Get target cell
+            int targetArrLine = -1;
+            int targetArrColumn = -1;
+            GetTargetIndex(sender, eventArgs, ref targetArrLine, ref targetArrColumn);    
+            Cell targetCell = cells[targetArrLine, targetArrColumn];      
+
+            // If there is a ship in the target cell
+            if (targetCell.IsOccupied)
+            {
+                Ship targetShip = targetCell.Ship;
+
+                // Get array index of Target Head
+                int targetHeadArrLine = -1;
+                int targetHeadArrColumn = -1;
+                ConvertCartesianCoordsToArrIndex(targetShip.Head, ref targetHeadArrLine, ref targetHeadArrColumn);
+
+                // Get  index of  affected cell of a ship in a ship-state array.
+                int shipStateArrCell = -1;
+                switch (targetShip.Direction)
+                {
+                    case Direction.North:
+                        shipStateArrCell = targetArrLine - targetHeadArrLine;
+                        break;
+                    case Direction.West:
+                        shipStateArrCell = targetArrColumn - targetHeadArrColumn;
+                        break;
+                    case Direction.South:
+                        shipStateArrCell = targetHeadArrLine - targetArrLine;
+                        break;
+                    case Direction.East:
+                        shipStateArrCell = targetHeadArrColumn - targetArrColumn;
+                        break;
+                }
+
+                //Change a cell in a ship-state array according to an action of a sender
+                if (eventArgs.ShipAction == ShipActionType.Shoot)
+                {
+                    targetShip.ShipCells[shipStateArrCell] = false;
+                }
+                else if (eventArgs.ShipAction == ShipActionType.Heal)
+                {
+                    targetShip.ShipCells[shipStateArrCell] = true;
+                }
+
+                // if quantity of 'true' cells in ShipCells = 0, remove ship from field
             }
         }
     }

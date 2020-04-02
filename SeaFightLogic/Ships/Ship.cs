@@ -26,7 +26,7 @@ namespace SeaFightLogic
         public event ShipMovementHandler ShipMovement;
 
         // Method for raising event from derived classes
-        public void OnShipAction(Ship sender, ShipActionEventArgs eventArgs)
+        protected void OnShipAction(Ship sender, ShipActionEventArgs eventArgs)
         {
             ShipAction.Invoke(sender, eventArgs);
         }
@@ -67,12 +67,12 @@ namespace SeaFightLogic
             int uninjuredPartsQuantity = ShipCells.Count(c => c == true);
             string shipWholeness = string.Format("Ship wholeness: {0}/{1}", uninjuredPartsQuantity, ShipCells.Length);
 
-            // In next updates method should return json object instead 
+             // In next updates method should return json object instead 
             Dictionary<string, string> shipState = new Dictionary<string, string>
             {
                 { "shipType", shipType },
                 { "shipWholeness", shipWholeness }
-            };
+             };
 
             return shipState;
         }
