@@ -197,7 +197,7 @@ namespace SeaFightLogic
             }
 
             CartesianCoordinate headCartesianCoord = new CartesianCoordinate(x, y, quadrant);
-
+            ship.Direction = direction;
             int line = -1;
             int column = -1;
 
@@ -271,6 +271,44 @@ namespace SeaFightLogic
             else
             {
                 throw new Exception("Error! Cannot place ship. Some of the cells are occupied by another ship!");
+            }
+        }
+
+
+        private void GetTargetIndex(Ship sender, ShipActionEventArgs eventArgs,
+                                  ref int targetArrLine, ref int targetArrColumn)
+        {
+            int senderHeadLine = -1;
+            int senderHeadColumn = -1;
+
+            ConvertCartesianCoordsToArrIndex(sender.Head, ref senderHeadLine, ref senderHeadColumn);
+            switch (sender.Direction)
+            {
+                case Direction.North:
+                    {
+                        targetArrLine = senderHeadLine - eventArgs.ActionDistance;
+                        targetArrColumn = senderHeadColumn;
+                        break;
+                    }
+                case Direction.West:
+                    {
+                        targetArrLine = senderHeadLine;
+                        targetArrColumn = senderHeadColumn - eventArgs.ActionDistance;
+                        break;
+                    }
+                case Direction.South:
+                    {
+
+                        targetArrLine = senderHeadLine + eventArgs.ActionDistance;
+                        targetArrColumn = senderHeadColumn;
+                        break;
+                    }
+                case Direction.East:
+                    {
+                        targetArrLine = senderHeadLine;
+                        targetArrColumn = senderHeadColumn + eventArgs.ActionDistance;
+                        break;
+                    }
             }
         }
     }
