@@ -34,6 +34,10 @@ namespace CustomORM
             SetUpdateCommandText(tableColumnNames);
             SetInsertCommandText(tableColumnNames);
             SetDeleteCommandText(tableColumnNames);
+            var columnsToSet = tableColumnNames.Except(new string[] { "Id" });
+            SetUpdateCommandText(columnsToSet);
+            SetInsertCommandText(columnsToSet);
+            SetDeleteCommandText(columnsToSet);
             SetSelectCommandText();
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
@@ -91,6 +95,7 @@ namespace CustomORM
         private List<string> GetTableColumnsNames()
         {
             string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}' AND COLUMN_NAME<>'Id'";
+            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}'";
             List<string> columnNames = new List<string>();
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
