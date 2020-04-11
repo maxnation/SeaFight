@@ -10,10 +10,11 @@ namespace CustomORM
     {
         private string connectionString;
         private string tableName;
-        private string updateCommand;
-        private string deleteCommand;
-        private string insertCommand;
-        private string selectCommand;
+        private string updateCommandText;
+        private string deleteCommandText;
+        private string insertCommandText;
+        private string selectCommandText;
+        private SqlCommand command;
 
         private Repository(string connectionString)
         {
@@ -28,6 +29,7 @@ namespace CustomORM
         }
         private void SetCommands()
         {
+            command = new SqlCommand();
             var props = GetDbFiledsNames();
             SetUpdateCommandText(props);
             SetInsertCommandText(props);
@@ -43,7 +45,7 @@ namespace CustomORM
             }
             updateCommandText = updateCommandText.TrimEnd(',', ' ');
             updateCommandText += " WHERE Id = @Id";
-            updateCommand = updateCommandText;
+            this.updateCommandText = updateCommandText;
         }
         private void SetInsertCommandText(IEnumerable<string> props)
         {
@@ -63,18 +65,18 @@ namespace CustomORM
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += $"; SELECT Id FROM {tableName} WHERE Id = @@IDENTITY";
-            insertCommand = insertCommandText;
+            this.insertCommandText = insertCommandText;
 
         }
         private void SetDeleteCommandText(IEnumerable<string> props)
         {
 
             string deleteCommandText = $"DELETE FROM {tableName} WHERE Id= @Id";
-            deleteCommand = deleteCommandText;
+            this.deleteCommandText = deleteCommandText;
         }
         private void SetSelectCommandText()
         {
-            selectCommand = $"SELECT * FROM {tableName}";
+            selectCommandText = $"SELECT * FROM {tableName}";
         }
         private void SetTableName()
         {
