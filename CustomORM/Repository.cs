@@ -183,7 +183,20 @@ namespace CustomORM
 
         public T Find(int id)
         {
-            throw new NotImplementedException();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                command.CommandText = selectCommandText;
+                command.CommandText = selectCommandText + "WHERE Id = @Id";
+                command.Connection = connection;
+                command.Parameters.AddWithValue("@Id", id);
+
+                connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
+                reader.Read();
+
+                T entity = Map(reader);
+                return entity;
+            }
         }
 
         public IEnumerable<T> GetAll()
@@ -217,6 +230,7 @@ namespace CustomORM
                 }
                 property.SetValue(entity, reader[i]);
             }
+            reader.Close();
 
             return (T)entity;
         }
