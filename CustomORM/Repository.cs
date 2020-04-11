@@ -181,6 +181,24 @@ namespace CustomORM
 
             return (T)entity;
         }
+
+        private void SetCommandParameters<T>(SqlCommand command, T entity)
+        {
+            foreach (var columnName in tableColumnNames)
+            {
+                var property = entity.GetType().GetProperty(columnName);
+
+                if (property == null)
+                {
+                    property = entity.GetType()
+                        .GetProperties()
+                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                        ?.ColumnName == columnName);
+                }
+                object value = property.GetValue(entity);
+                command.Parameters.AddWithValue("@" + columnName, value);
+            }
+        }
         #endregion
     }
 }
