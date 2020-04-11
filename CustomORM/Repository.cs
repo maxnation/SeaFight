@@ -204,7 +204,13 @@ namespace CustomORM
 
         public void Update(T entity)
         {
-            throw new NotImplementedException();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(updateCommandText, connection);
+                SetCommandParameters(command, entity);
+                connection.Open();
+                command.ExecuteNonQuery();
+            }
         }
         #endregion
 
