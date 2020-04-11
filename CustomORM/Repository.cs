@@ -129,7 +129,26 @@ namespace CustomORM
         #region CRUD
         public void Add(T entity)
         {
-            throw new NotImplementedException();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                command.CommandText = insertCommandText;
+                command.Connection = connection;
+                SetCommandParameters(command, entity);
+
+                connection.Open();
+                object id = command.ExecuteScalar();
+
+                PropertyInfo idProperty = entity.GetType().GetProperty("Id");
+                if (idProperty == null)
+                {
+                    idProperty = entity.GetType()
+                          .GetProperties()
+                          .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                          ?.ColumnName == "Id");
+                }
+
+                idProperty.SetValue(entity, id);
+            }
         }
 
         public void Delete(T entity)
@@ -142,13 +161,13 @@ namespace CustomORM
             {
                 var prop = entity.GetType()
                   .GetProperties()
-                  .FirstOrDefault(p => 
+                  .FirstOrDefault(p =>
                   (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
 
                 id = prop.GetValue(entity);
             }
-            
-            Delete((int) id);
+
+            Delete((int)id);
         }
 
         public void Delete(int id)
