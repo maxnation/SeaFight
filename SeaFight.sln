@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2019
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeaFight", "ConsoleApp1\SeaFight.csproj", "{C17C077A-56FC-4737-BB5E-60C2EE2A2152}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "ConsoleApp1\Client.csproj", "{C17C077A-56FC-4737-BB5E-60C2EE2A2152}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeaFight.Logic", "SeaFightLogic\SeaFight.Logic.csproj", "{C481DF7D-F877-4485-A95C-7EF4A48C0990}"
 EndProject
