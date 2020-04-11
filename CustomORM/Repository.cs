@@ -177,6 +177,7 @@ namespace CustomORM
                 command.CommandText = deleteCommandText;
                 command.Connection = connection;
                 command.Parameters.AddWithValue("Id", id);
+                connection.Open();
                 command.ExecuteNonQuery();
             }
         }
