@@ -38,7 +38,7 @@ namespace CustomORM
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
-            string updateCommandText = $"UPDATE {tableName} SET ";
+            string updateCommandText = $"UPDATE [{tableName}] SET ";
             foreach (var prop in props)
             {
                 updateCommandText += $"{prop} = @{prop}, ";
@@ -49,7 +49,7 @@ namespace CustomORM
         }
         private void SetInsertCommandText(IEnumerable<string> props)
         {
-            string insertCommandText = $"INSERT INTO {tableName} (";
+            string insertCommandText = $"INSERT INTO [{tableName}] (";
             foreach (var prop in props)
             {
                 insertCommandText += $"{prop}, ";
@@ -64,19 +64,19 @@ namespace CustomORM
             }
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
-            insertCommandText += $"; SELECT Id FROM {tableName} WHERE Id = @@IDENTITY";
+            insertCommandText += $"; SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
 
         }
         private void SetDeleteCommandText(IEnumerable<string> props)
         {
 
-            string deleteCommandText = $"DELETE FROM {tableName} WHERE Id= @Id";
+            string deleteCommandText = $"DELETE FROM [{tableName}] WHERE Id= @Id";
             this.deleteCommandText = deleteCommandText;
         }
         private void SetSelectCommandText()
         {
-            selectCommandText = $"SELECT * FROM {tableName}";
+            selectCommandText = $"SELECT * FROM [{tableName}]";
         }
         private void SetTableName()
         {
