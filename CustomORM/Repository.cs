@@ -15,7 +15,7 @@ namespace CustomORM
         private string insertCommandText;
         private string selectCommandText;
         private SqlCommand command;
-
+        private List<string> tableColumnNames;
         private Repository(string connectionString)
         {
             this.connectionString = connectionString;
@@ -30,10 +30,10 @@ namespace CustomORM
         private void SetCommands()
         {
             command = new SqlCommand();
-            var props = GetDbFiledsNames();
-            SetUpdateCommandText(props);
-            SetInsertCommandText(props);
-            SetDeleteCommandText(props);
+            tableColumnNames = GetTableColumnsNames();
+            SetUpdateCommandText(tableColumnNames);
+            SetInsertCommandText(tableColumnNames);
+            SetDeleteCommandText(tableColumnNames);
             SetSelectCommandText();
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
@@ -87,7 +87,7 @@ namespace CustomORM
 
             tableName = tableAttribute == null ? type.GetGenericArguments().First().Name : tableAttribute.TableName;
         }
-        private List<string> GetDbFiledsNames()
+        private List<string> GetTableColumnsNames()
         {
             string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}' AND COLUMN_NAME<>'Id'";
             List<string> columnNames = new List<string>();
