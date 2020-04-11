@@ -14,8 +14,8 @@ namespace CustomORM
         private string deleteCommandText;
         private string insertCommandText;
         private string selectCommandText;
-        private SqlCommand command;
         private List<string> tableColumnNames;
+
         private Repository(string connectionString)
         {
             this.connectionString = connectionString;
@@ -29,7 +29,6 @@ namespace CustomORM
         }
         private void SetCommands()
         {
-            command = new SqlCommand();
             tableColumnNames = GetTableColumnsNames();
             var columnsToSet = tableColumnNames.Except(new string[] { "Id" });
             SetUpdateCommandText(columnsToSet);
@@ -131,8 +130,7 @@ namespace CustomORM
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                command.CommandText = insertCommandText;
-                command.Connection = connection;
+                SqlCommand command = new SqlCommand(insertCommandText, connection);             
                 SetCommandParameters(command, entity);
 
                 connection.Open();
@@ -174,8 +172,7 @@ namespace CustomORM
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                command.CommandText = deleteCommandText;
-                command.Connection = connection;
+                SqlCommand command = new SqlCommand(deleteCommandText, connection);              
                 command.Parameters.AddWithValue("Id", id);
                 connection.Open();
                 command.ExecuteNonQuery();
@@ -186,7 +183,7 @@ namespace CustomORM
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                command.CommandText = selectCommandText;
+                SqlCommand command = new SqlCommand();
                 command.CommandText = selectCommandText + "WHERE Id = @Id";
                 command.Connection = connection;
                 command.Parameters.AddWithValue("@Id", id);
