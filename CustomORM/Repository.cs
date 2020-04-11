@@ -65,6 +65,7 @@ namespace CustomORM
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += $"; SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
+            insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
 
         }
