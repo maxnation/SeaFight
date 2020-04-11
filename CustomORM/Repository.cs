@@ -15,7 +15,7 @@ namespace CustomORM
         private string insertCommandText;
         private string selectCommandText;
         private SqlCommand command;
-
+        private List<string> tableColumnNames;
         private Repository(string connectionString)
         {
             this.connectionString = connectionString;
@@ -30,15 +30,16 @@ namespace CustomORM
         private void SetCommands()
         {
             command = new SqlCommand();
-            var props = GetDbFiledsNames();
-            SetUpdateCommandText(props);
-            SetInsertCommandText(props);
-            SetDeleteCommandText(props);
+            tableColumnNames = GetTableColumnsNames();
+            var columnsToSet = tableColumnNames.Except(new string[] { "Id" });
+            SetUpdateCommandText(columnsToSet);
+            SetInsertCommandText(columnsToSet);
+            SetDeleteCommandText(columnsToSet);
             SetSelectCommandText();
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
-            string updateCommandText = $"UPDATE {tableName} SET ";
+            string updateCommandText = $"UPDATE [{tableName}] SET ";
             foreach (var prop in props)
             {
                 updateCommandText += $"{prop} = @{prop}, ";
@@ -49,7 +50,7 @@ namespace CustomORM
         }
         private void SetInsertCommandText(IEnumerable<string> props)
         {
-            string insertCommandText = $"INSERT INTO {tableName} (";
+            string insertCommandText = $"INSERT INTO [{tableName}] (";
             foreach (var prop in props)
             {
                 insertCommandText += $"{prop}, ";
@@ -64,19 +65,19 @@ namespace CustomORM
             }
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
-            insertCommandText += $"; SELECT Id FROM {tableName} WHERE Id = @@IDENTITY";
+            insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
 
         }
         private void SetDeleteCommandText(IEnumerable<string> props)
         {
 
-            string deleteCommandText = $"DELETE FROM {tableName} WHERE Id= @Id";
+            string deleteCommandText = $"DELETE FROM [{tableName}] WHERE Id= @Id";
             this.deleteCommandText = deleteCommandText;
         }
         private void SetSelectCommandText()
         {
-            selectCommandText = $"SELECT * FROM {tableName}";
+            selectCommandText = $"SELECT * FROM [{tableName}]";
         }
         private void SetTableName()
         {
@@ -87,9 +88,9 @@ namespace CustomORM
 
             tableName = tableAttribute == null ? type.GetGenericArguments().First().Name : tableAttribute.TableName;
         }
-        private List<string> GetDbFiledsNames()
+        private List<string> GetTableColumnsNames()
         {
-            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}' AND COLUMN_NAME<>'Id'";
+            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}'";
             List<string> columnNames = new List<string>();
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -174,6 +175,49 @@ namespace CustomORM
         public void Update(T entity)
         {
             throw new NotImplementedException();
+        }
+        #endregion
+
+        #region Mapping
+
+        private T Map(SqlDataReader reader)
+        {
+            var entity = typeof(T).GetConstructor(new Type[] { }).Invoke(new Type[] { });
+
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                string columnName = reader.GetName(i);
+                var property = entity.GetType().GetProperty(columnName);
+
+                if (property == null)
+                {
+                    property = entity.GetType()
+                        .GetProperties()
+                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                        ?.ColumnName == columnName);
+                }
+                property.SetValue(entity, reader[i]);
+            }
+
+            return (T)entity;
+        }
+
+        private void SetCommandParameters<T>(SqlCommand command, T entity)
+        {
+            foreach (var columnName in tableColumnNames)
+            {
+                var property = entity.GetType().GetProperty(columnName);
+
+                if (property == null)
+                {
+                    property = entity.GetType()
+                        .GetProperties()
+                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                        ?.ColumnName == columnName);
+                }
+                object value = property.GetValue(entity);
+                command.Parameters.AddWithValue("@" + columnName, value);
+            }
         }
         #endregion
     }
