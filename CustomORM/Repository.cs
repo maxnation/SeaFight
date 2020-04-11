@@ -31,9 +31,6 @@ namespace CustomORM
         {
             command = new SqlCommand();
             tableColumnNames = GetTableColumnsNames();
-            SetUpdateCommandText(tableColumnNames);
-            SetInsertCommandText(tableColumnNames);
-            SetDeleteCommandText(tableColumnNames);
             var columnsToSet = tableColumnNames.Except(new string[] { "Id" });
             SetUpdateCommandText(columnsToSet);
             SetInsertCommandText(columnsToSet);
@@ -68,7 +65,6 @@ namespace CustomORM
             }
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
-            insertCommandText += $"; SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
 
@@ -94,7 +90,6 @@ namespace CustomORM
         }
         private List<string> GetTableColumnsNames()
         {
-            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}' AND COLUMN_NAME<>'Id'";
             string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}'";
             List<string> columnNames = new List<string>();
             using (SqlConnection connection = new SqlConnection(connectionString))
