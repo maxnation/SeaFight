@@ -13,6 +13,7 @@ namespace CustomORM
         private string updateCommand;
         private string deleteCommand;
         private string insertCommand;
+        private string selectCommand;
 
         private Repository(string connectionString)
         {
@@ -31,6 +32,7 @@ namespace CustomORM
             SetUpdateCommandText(props);
             SetInsertCommandText(props);
             SetDeleteCommandText(props);
+            SetSelectCommandText();
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
@@ -69,6 +71,10 @@ namespace CustomORM
 
             string deleteCommandText = $"DELETE FROM {tableName} WHERE Id= @Id";
             deleteCommand = deleteCommandText;
+        }
+        private void SetSelectCommandText()
+        {
+            selectCommand = $"SELECT * FROM {tableName}";
         }
         private void SetTableName()
         {
