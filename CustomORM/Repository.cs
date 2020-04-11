@@ -131,9 +131,34 @@ namespace CustomORM
             throw new NotImplementedException();
         }
 
+        public void Delete(T entity)
+        {
+            if (entity == null) throw new ArgumentNullException();
+
+            object id = (entity.GetType().GetProperty("Id")?.GetValue(entity));
+
+            if (id == null)
+            {
+                var prop = entity.GetType()
+                  .GetProperties()
+                  .FirstOrDefault(p => 
+                  (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
+
+                id = prop.GetValue(entity);
+            }
+            
+            Delete((int) id);
+        }
+
         public void Delete(int id)
         {
-            throw new NotImplementedException();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                command.CommandText = deleteCommandText;
+                command.Connection = connection;
+                command.Parameters.AddWithValue("Id", id);
+                command.ExecuteNonQuery();
+            }
         }
 
         public T Find(int id)
