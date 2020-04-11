@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CustomORM.Attributes
+namespace CustomORM
 {
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple =false)]
     public class TableAttribute : Attribute
     {
         public string TableName;
