@@ -193,13 +193,32 @@ namespace CustomORM
                 reader.Read();
 
                 T entity = Map(reader);
+                reader.Close();
                 return entity;
             }
         }
 
         public IEnumerable<T> GetAll()
         {
-            throw new NotImplementedException();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand();
+                command.CommandText = selectCommandText;
+                command.Connection = connection;
+                
+
+                connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
+
+                List<T> entities = new List<T>();
+                while (reader.Read())
+                {
+                    T entity = Map(reader);
+                    entities.Add(entity);
+                }
+                reader.Close();
+                return entities;
+            }
         }
 
         public void Update(T entity)
@@ -234,7 +253,6 @@ namespace CustomORM
                 }
                 property.SetValue(entity, reader[i]);
             }
-            reader.Close();
 
             return (T)entity;
         }
