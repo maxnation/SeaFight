@@ -151,6 +151,31 @@ namespace CustomORM
             throw new NotImplementedException();
         }
         #endregion
+
+        #region Mapping
+
+        private T Map(SqlDataReader reader)
+        {
+            var entity = typeof(T).GetConstructor(new Type[] { }).Invoke(new Type[] { });
+
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                string columnName = reader.GetName(i);
+                var property = entity.GetType().GetProperty(columnName);
+
+                if (property == null)
+                {
+                    property = entity.GetType()
+                        .GetProperties()
+                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                        ?.ColumnName == columnName);
+                }
+                property.SetValue(entity, reader[i]);
+            }
+
+            return (T)entity;
+        }
+        #endregion
     }
 }
 
