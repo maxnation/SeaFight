@@ -47,7 +47,19 @@
     <Compile Include="ContextBase.cs" />
     <Compile Include="IRepository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RelationData.cs" />
     <Compile Include="Repository.cs" />
+    <Compile Include="ORMResource.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ORMResource.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ORMResource.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>ORMResource.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
