@@ -130,7 +130,7 @@ namespace CustomORM
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                SqlCommand command = new SqlCommand(insertCommandText, connection);             
+                SqlCommand command = new SqlCommand(insertCommandText, connection);
                 SetCommandParameters(command, entity);
 
                 connection.Open();
@@ -172,7 +172,7 @@ namespace CustomORM
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                SqlCommand command = new SqlCommand(deleteCommandText, connection);              
+                SqlCommand command = new SqlCommand(deleteCommandText, connection);
                 command.Parameters.AddWithValue("Id", id);
                 connection.Open();
                 command.ExecuteNonQuery();
@@ -192,7 +192,7 @@ namespace CustomORM
                 SqlDataReader reader = command.ExecuteReader();
                 reader.Read();
 
-                T entity = Map(reader);
+                T entity = Map<T>(reader);
                 reader.Close();
                 return entity;
             }
@@ -205,7 +205,7 @@ namespace CustomORM
                 SqlCommand command = new SqlCommand();
                 command.CommandText = selectCommandText;
                 command.Connection = connection;
-                
+
 
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
@@ -213,7 +213,7 @@ namespace CustomORM
                 List<T> entities = new List<T>();
                 while (reader.Read())
                 {
-                    T entity = Map(reader);
+                    T entity = Map<T>(reader);
                     entities.Add(entity);
                 }
                 reader.Close();
@@ -235,7 +235,7 @@ namespace CustomORM
 
         #region Mapping
 
-        private T Map(SqlDataReader reader)
+        private T Map<T>(SqlDataReader reader)
         {
             var entity = typeof(T).GetConstructor(new Type[] { }).Invoke(new Type[] { });
 
@@ -257,8 +257,8 @@ namespace CustomORM
             return (T)entity;
         }
 
-        private void SetCommandParameters<T>(SqlCommand command, T entity)
-        {
+        private void SetCommandParameters(SqlCommand command, T entity)
+        {           
             foreach (var columnName in tableColumnNames)
             {
                 var property = entity.GetType().GetProperty(columnName);
@@ -275,6 +275,31 @@ namespace CustomORM
             }
         }
         #endregion
+
+        private IEnumerable<RelationData> GetTableRelations(string tableName)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {                
+                SqlCommand command = new SqlCommand("sp_getFkData", connection);
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("@tableName", tableName);
+
+                connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
+
+                List<RelationData> relations = new List<RelationData>();
+
+                while (reader.Read())
+                {
+                    RelationData relationData = this.Map<RelationData>(reader);
+                    relations.Add(relationData);
+                }
+
+                reader.Close();
+                return relations;
+            }
+        }
+
     }
 }
 
