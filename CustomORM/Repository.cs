@@ -16,8 +16,9 @@ namespace CustomORM
         private string deleteCommandText;
         private string insertCommandText;
         private string selectCommandText;
-        private List<string> tableColumnNames;
+        private IEnumerable<string> tableColumnNames;
         private IEnumerable<RelationData> tableRelations;
+        private bool isInheritedEntity;
 
         private Repository(string connectionString)
         {
@@ -28,6 +29,7 @@ namespace CustomORM
         #region Initialization
         private void Initialize()
         {
+            isInheritedEntity = IsInheritedEntity(typeof(T));
             SetTableName();
             SetTableRelations();
             SetCommands();
@@ -35,14 +37,15 @@ namespace CustomORM
         private void SetCommands()
         {
             tableColumnNames = GetTableColumnsNames();
-            var columnsToSet = tableColumnNames.Except(new string[] { "Id" });
+            var columnsToSet = tableColumnNames.Except(new string[] { "Id", "Discriminator" });
             SetUpdateCommandText(columnsToSet);
             SetInsertCommandText(columnsToSet);
-            SetDeleteCommandText(columnsToSet);
+            SetDeleteCommandText();
             SetSelectCommandText();
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
+
             string updateCommandText = $"UPDATE [{tableName}] SET ";
             foreach (var prop in props)
             {
@@ -60,6 +63,10 @@ namespace CustomORM
                 insertCommandText += $"{prop}, ";
             }
 
+            if (isInheritedEntity)
+            {
+                insertCommandText += "Discriminator";
+            }
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += ") VALUES ( ";
 
@@ -68,12 +75,17 @@ namespace CustomORM
                 insertCommandText += $"@{prop}, ";
             }
 
+            if (isInheritedEntity)
+            {
+                insertCommandText += $"'{typeof(T).Name}'";
+            }
+
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
 
         }
-        private void SetDeleteCommandText(IEnumerable<string> props)
+        private void SetDeleteCommandText()
         {
 
             string deleteCommandText = $"DELETE FROM [{tableName}] WHERE Id= @Id";
@@ -82,17 +94,32 @@ namespace CustomORM
         private void SetSelectCommandText()
         {
             selectCommandText = $"SELECT * FROM [{tableName}]";
+
+            if (isInheritedEntity)
+            {
+                selectCommandText += $" WHERE Discriminator = '{typeof(T).Name}'";
+            }
+        }
+
+        private bool IsInheritedEntity(Type entityType)
+        {
+            return entityType.BaseType.FullName == typeof(object).FullName ? false : true;   
         }
         private void SetTableName()
         {
-            Type type = this.GetType();
-            var tableAttribute = (type.GetGenericArguments()?.FirstOrDefault()
-                ?.GetCustomAttributes(typeof(TableAttribute), false) as TableAttribute[])
-                ?.FirstOrDefault();
+            var type = typeof(T);
+            if (isInheritedEntity)
+            {
+                type = type.BaseType;
+            }
 
-            tableName = tableAttribute == null ? type.GetGenericArguments().First().Name : tableAttribute.TableName;
+             var tableAttribute = type
+                ?.GetCustomAttributes(typeof(TableAttribute), false).FirstOrDefault() as TableAttribute;
+
+            tableName = tableAttribute == null ? type.Name : tableAttribute.TableName;
         }
-        private List<string> GetTableColumnsNames()
+
+        private IEnumerable<string> GetTableColumnsNames()
         {
             string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}'";
             List<string> columnNames = new List<string>();
@@ -107,12 +134,12 @@ namespace CustomORM
                 }
                 reader.Close();
             }
-            return columnNames;
+            return columnNames.Intersect(GetPropertiesNames());
         }
-        private string[] GetPropertiesNames()
+        private IEnumerable<string> GetPropertiesNames()
         {
             Type entityType = this.GetType().GetGenericArguments().FirstOrDefault();
-            PropertyInfo[] properties = entityType.GetProperties(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Public);
+            PropertyInfo[] properties = entityType.GetProperties( BindingFlags.Instance | BindingFlags.Public);
 
             string[] propertyNames = new string[properties.Length];
 
@@ -200,7 +227,15 @@ namespace CustomORM
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 SqlCommand command = new SqlCommand();
-                command.CommandText = selectCommandText + "WHERE Id = @Id";
+
+                if (isInheritedEntity)
+                {
+                    command.CommandText = selectCommandText + "AND Id = @Id";
+                }
+                else
+                {
+                    command.CommandText = selectCommandText + "WHERE Id = @Id";
+                }
                 command.Connection = connection;
                 command.Parameters.AddWithValue("@Id", id);
 
