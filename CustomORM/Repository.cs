@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Data.SqlClient;
 using System.Reflection;
+using System.Data;
+using System.Collections;
 
 namespace CustomORM
 {
@@ -217,11 +219,7 @@ namespace CustomORM
             var entities = GetAll();
             if (loadRelatedData == true)
             {
-                foreach (var entity in entities)
-                {
-                    
-                    LoadRelatedData(entity);
-                }         
+                LoadRelatedData(entities);     
             }
             return entities;
         }
@@ -343,24 +341,15 @@ namespace CustomORM
                 tableRelations = relations;
             }
         }
-
-        public void LoadRelatedData(T entity)
+  
+        public void  LoadRelatedData(IEnumerable<T> entities)
         {
-            object id = (entity.GetType().GetProperty("Id")?.GetValue(entity));
-            if (id == null)
-            {
-                var prop = entity.GetType()
-                  .GetProperties()
-                  .FirstOrDefault(p =>
-                  (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
-
-                id = prop.GetValue(entity);
-            }
-
-            var navigationalProps = entity.GetType().GetProperties()
+            // Получили её навигационные свойства коллекционного типа
+            var navigationalProps = typeof(T).GetProperties()
                     .Where(p => p.PropertyType.GetGenericArguments().Length == 1)
                     .ToDictionary(p => p.PropertyType.GetGenericArguments()[0].Name, p => p);
 
+            // Проходим по каждому отношению, в котором состоит сущность типа T
             foreach (RelationData relation in tableRelations)
             {
                 if (this.tableName == relation.Parent_Table)
@@ -372,6 +361,140 @@ namespace CustomORM
                                                     BindingFlags.Instance | BindingFlags.Public,
                                                     binder: null, types: new Type[] { }, modifiers: null);
 
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        SqlCommand command = new SqlCommand();
+                        command.Connection = connection;
+                        command.CommandText = $"SELECT * FROM [{relation.Child_Table}] WHERE {relation.FK_ColumnName} IS NOT NULL";
+                        connection.Open();
+
+                        Type generic = typeof(List<>);
+                        Type[] typeArgs = { navPropGenericArgType };
+                        Type constructed = generic.MakeGenericType(typeArgs);
+
+                        IList collection = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
+
+                        //Заполнение collection
+                        SqlDataReader reader = command.ExecuteReader();
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                object instance = propertyCtor.Invoke(new object[] { });
+                                Map(reader, instance);
+                                collection.Add(instance);
+                            }                        
+                        }
+                   
+                        foreach(var entity in entities)
+                        {                    
+                            int pk = (int)entity.GetType().GetProperty(relation.PK_ColumnName).GetValue(entity);
+
+                            // Создаем коллекцию типа навигационного свойства
+                            Type genericNavig = typeof(List<>);
+                            Type[] typeArgsNavig = { navPropGenericArgType };
+                            Type constructedNavig = generic.MakeGenericType(typeArgs);                       
+                            IList collectionNavig = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
+
+                            foreach (var item in collection)
+                            {
+                                int fk = (int)item.GetType().GetProperty(relation.FK_ColumnName).GetValue(item);
+
+                                if (fk == pk)
+                                {
+                                    collectionNavig.Add(item);
+                                }
+                            }
+                            navigProperty.SetValue(entity, collectionNavig);
+                        }
+                    }
+                }
+                else if (this.tableName == relation.Child_Table)
+                {
+                    var navigationalProperty = typeof(T).GetProperty(relation.Parent_Table);
+
+                    var propertyCtor = navigationalProperty.PropertyType.GetConstructor(
+                                                    BindingFlags.Instance | BindingFlags.Public,
+                                                    binder: null, types: new Type[] { }, modifiers: null);
+
+                    Type genericSub = typeof(List<>);
+                    Type[] typeArgsSub = { navigationalProperty.PropertyType };
+                    Type constructedSub = genericSub.MakeGenericType(typeArgsSub);
+
+                    // List<someEntity>
+                    IList collectionSub = constructedSub.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
+
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        SqlCommand command = new SqlCommand();
+                        command.Connection = connection;
+                        command.CommandText = $"SELECT * FROM [{relation.Parent_Table}]";
+                        connection.Open();
+
+                        SqlDataReader reader = command.ExecuteReader();
+                       
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                object propertyInstance = propertyCtor.Invoke(new object[] { });
+                                Map(reader, propertyInstance);
+                                collectionSub.Add(propertyInstance);
+                            }
+                            foreach (T entity in entities)
+                            {
+                                int fk = (int)typeof(T).GetProperty(relation.FK_ColumnName).GetValue(entity);
+                                var foreignProp = typeof(T).GetProperty(relation.Parent_Table);
+
+                                foreach (var parentEntity in collectionSub)
+                                {
+                                    int pk = (int)parentEntity.GetType().GetProperty(relation.PK_ColumnName).GetValue(parentEntity);
+                                    if (fk == pk)
+                                    {
+                                        foreignProp.SetValue(entity, parentEntity);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }   
+                }
+            }
+        }
+
+        public void LoadRelatedData(T entity)
+        {
+            // Получили ID текущей сущности
+            object id = (entity.GetType().GetProperty("Id")?.GetValue(entity));
+            if (id == null)
+            {
+                var prop = entity.GetType()
+                  .GetProperties()
+                  .FirstOrDefault(p =>
+                  (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
+
+                id = prop.GetValue(entity);
+            }
+
+            // Получили её навигационные свойства коллекционного типа
+            var navigationalProps = entity.GetType().GetProperties()
+                    .Where(p => p.PropertyType.GetGenericArguments().Length == 1)
+                    .ToDictionary(p => p.PropertyType.GetGenericArguments()[0].Name, p => p);
+
+            // Проходим по каждому отношению, в котором состоит ДАННАЯ сущность (Одна из N, полученных в GetAll )
+            foreach (RelationData relation in tableRelations)
+            {
+                if (this.tableName == relation.Parent_Table)
+                {
+                    var navigProperty = navigationalProps[relation.Child_Table];
+                    Type navPropGenericArgType = navigProperty.PropertyType.GenericTypeArguments[0];
+
+                    var propertyCtor = navPropGenericArgType.GetConstructor(
+                                                    BindingFlags.Instance | BindingFlags.Public,
+                                                    binder: null, types: new Type[] { }, modifiers: null);
+
+
+                    
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
                         SqlCommand command = new SqlCommand();
