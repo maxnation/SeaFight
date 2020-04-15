@@ -36,16 +36,18 @@ namespace CustomORM
         }
         private void SetCommands()
         {
-            tableColumnNames = GetTableColumnsNames();
-            var columnsToSet = tableColumnNames.Except(new string[] { "Id", "Discriminator" });
+            tableColumnNames = GetTableColumnsNames(); // All columns of the table          
+            var currentEntityColumnsOnly = tableColumnNames.Intersect(GetPropertiesNames()); // [All columns] minus [Parent columns]
+            var columnsToSet = currentEntityColumnsOnly.Except(new string[] { "Id", "Discriminator" });
+            var columnsToGet =  tableColumnNames;
+
             SetUpdateCommandText(columnsToSet);
             SetInsertCommandText(columnsToSet);
             SetDeleteCommandText();
-            SetSelectCommandText();
+            SetSelectCommandText(columnsToGet);
         }
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
-
             string updateCommandText = $"UPDATE [{tableName}] SET ";
             foreach (var prop in props)
             {
@@ -83,15 +85,13 @@ namespace CustomORM
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
-
         }
         private void SetDeleteCommandText()
         {
-
             string deleteCommandText = $"DELETE FROM [{tableName}] WHERE Id= @Id";
             this.deleteCommandText = deleteCommandText;
         }
-        private void SetSelectCommandText()
+        private void SetSelectCommandText(IEnumerable<string> props)
         {
             selectCommandText = $"SELECT * FROM [{tableName}]";
 
@@ -100,7 +100,6 @@ namespace CustomORM
                 selectCommandText += $" WHERE Discriminator = '{typeof(T).Name}'";
             }
         }
-
         private bool IsInheritedEntity(Type entityType)
         {
             return entityType.BaseType.FullName == typeof(object).FullName ? false : true;   
@@ -134,16 +133,14 @@ namespace CustomORM
                 }
                 reader.Close();
             }
-            return columnNames.Intersect(GetPropertiesNames());
+            return columnNames;
         }
         private IEnumerable<string> GetPropertiesNames()
         {
             Type entityType = this.GetType().GetGenericArguments().FirstOrDefault();
             PropertyInfo[] properties = entityType.GetProperties( BindingFlags.Instance | BindingFlags.Public);
-
             string[] propertyNames = new string[properties.Length];
 
-            // Проходим по каждому свойству сущности. Если к нему применен атрибут ColumnName, берем имя из атрибута, иначе - само имя свойства
             for (int i = 0; i < properties.Length; i++)
             {
                 propertyNames[i] = properties[i].GetCustomAttributes<ColumnAttribute>()?.FirstOrDefault()?.ColumnName;
@@ -152,8 +149,43 @@ namespace CustomORM
                     propertyNames[i] = properties[i].Name;
                 }
             }
-
             return propertyNames;
+        }
+
+        private void SetCommandParameters(SqlCommand command, T entity)
+        {
+            foreach (var columnName in tableColumnNames)
+            {
+                var property = GetPropertyByColumnName(columnName, entity.GetType());
+                if (property != null)
+                {
+                    object value = property.GetValue(entity);
+                    command.Parameters.AddWithValue("@" + columnName, value);
+                }               
+            }
+        }
+
+        private void SetTableRelations()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand("sp_getFkData", connection);
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("@tableName", tableName);
+
+                connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
+
+                List<RelationData> relations = new List<RelationData>();
+                while (reader.Read())
+                {
+                    RelationData relationData = this.Map<RelationData>(reader);
+                    relations.Add(relationData);
+                }
+
+                reader.Close();
+                this.tableRelations = relations;
+            }
         }
         #endregion
 
@@ -168,15 +200,7 @@ namespace CustomORM
                 connection.Open();
                 object id = command.ExecuteScalar();
 
-                PropertyInfo idProperty = entity.GetType().GetProperty("Id");
-                if (idProperty == null)
-                {
-                    idProperty = entity.GetType()
-                          .GetProperties()
-                          .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
-                          ?.ColumnName == "Id");
-                }
-
+                PropertyInfo idProperty = GetPropertyByColumnName("Id", entity.GetType());
                 idProperty.SetValue(entity, id);
             }
         }
@@ -185,19 +209,10 @@ namespace CustomORM
         {
             if (entity == null) throw new ArgumentNullException();
 
-            object id = (entity.GetType().GetProperty("Id")?.GetValue(entity));
+            var idProperty = GetPropertyByColumnName("Id", entity.GetType());
+            int id = (int)idProperty.GetValue(entity);
 
-            if (id == null)
-            {
-                var prop = entity.GetType()
-                  .GetProperties()
-                  .FirstOrDefault(p =>
-                  (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
-
-                id = prop.GetValue(entity);
-            }
-
-            Delete((int)id);
+            Delete(id);
         }
 
         public void Delete(int id)
@@ -227,15 +242,8 @@ namespace CustomORM
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 SqlCommand command = new SqlCommand();
-
-                if (isInheritedEntity)
-                {
-                    command.CommandText = selectCommandText + "AND Id = @Id";
-                }
-                else
-                {
-                    command.CommandText = selectCommandText + "WHERE Id = @Id";
-                }
+                
+                command.CommandText = isInheritedEntity ? selectCommandText + "AND Id = @Id" : selectCommandText + "WHERE Id = @Id"; 
                 command.Connection = connection;
                 command.Parameters.AddWithValue("@Id", id);
 
@@ -293,96 +301,73 @@ namespace CustomORM
         #endregion
 
         #region Mapping
-
         private T Map<T>(SqlDataReader reader)
         {
-            var entity = typeof(T).GetConstructor(new Type[] { }).Invoke(new Type[] { });
+            // Check if the entity is of inherited type
+            string discriminator = string.Empty;
+            object entity=null;
+            try
+            {
+                discriminator = (string) reader["Discriminator"];
+            }
+            catch(Exception e){   }
+           
+            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type  
+            if (!string.IsNullOrEmpty(discriminator))
+            {
+                string @namespace = typeof(T).Namespace;
+                string assemblyName = typeof(T).Assembly.GetName().Name;
+                string fullTypeName = $"{@namespace}.{discriminator}, {assemblyName}";
+                Type t = Type.GetType(fullTypeName);
+                entity = t.GetConstructor(new Type[] { }).Invoke(new Type[] { });
+            }
+            else
+            {
+                entity = typeof(T).GetConstructor(new Type[] { }).Invoke(new Type[] { });
+            }
 
             for (int i = 0; i < reader.FieldCount; i++)
             {
                 string columnName = reader.GetName(i);
-                var property = entity.GetType().GetProperty(columnName);
-
-                if (property == null)
-                {
-                    property = entity.GetType()
-                        .GetProperties()
-                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
-                        ?.ColumnName == columnName);
-                }
+                var property = this.GetPropertyByColumnName(columnName, entity.GetType());
                 property?.SetValue(entity, reader[i]);
             }
-
             return (T)entity;
         }
 
-        private void Map<T>(SqlDataReader reader, T entity)
+        private void Map<T>(SqlDataReader reader, ref T entity)
         {
+            // Check if the entity is of inherited type
+            string discriminator = string.Empty;
+            try
+            {
+                discriminator = (string)reader["Discriminator"];
+            }
+            catch (Exception e){   }
+            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type  
+            if (!string.IsNullOrEmpty(discriminator))
+            {
+                string @namespace = entity.GetType().Namespace;
+                string assemblyName = entity.GetType().Assembly.GetName().Name;
+                string fullTypeName = $"{@namespace}.{discriminator}, {assemblyName}";
+                Type t = Type.GetType(fullTypeName);
+
+                entity = (T)t.GetConstructor(new Type[] { }).Invoke(new Type[] { });
+            }
+
             for (int i = 0; i < reader.FieldCount; i++)
             {
                 string columnName = reader.GetName(i);
-                var property = entity.GetType().GetProperty(columnName);
-
-                if (property == null)
-                {
-                    property = entity.GetType()
-                        .GetProperties()
-                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
-                        ?.ColumnName == columnName);
-                }
+                var property = GetPropertyByColumnName(columnName, entity.GetType());
                 property?.SetValue(entity, reader[i]);
             }
-        }
-
-        private void SetCommandParameters(SqlCommand command, T entity)
-        {
-            foreach (var columnName in tableColumnNames)
-            {
-                var property = entity.GetType().GetProperty(columnName);
-
-                if (property == null)
-                {
-                    property = entity.GetType()
-                        .GetProperties()
-                        .First(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
-                        ?.ColumnName == columnName);
-                }
-                object value = property.GetValue(entity);
-                command.Parameters.AddWithValue("@" + columnName, value);
-            }
-        }
+        }     
         #endregion
-
-        private void SetTableRelations()
-        {
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                SqlCommand command = new SqlCommand("sp_getFkData", connection);
-                command.CommandType = System.Data.CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@tableName", tableName);
-
-                connection.Open();
-                SqlDataReader reader = command.ExecuteReader();
-
-                List<RelationData> relations = new List<RelationData>();
-
-                while (reader.Read())
-                {
-                    RelationData relationData = this.Map<RelationData>(reader);
-                    relations.Add(relationData);
-                }
-
-                reader.Close();
-                tableRelations = relations;
-            }
-        }
-  
+       
         public void  LoadRelatedData(IEnumerable<T> entities)
         {
-            // Получили её навигационные свойства коллекционного типа
-            var navigationalProps = typeof(T).GetProperties()
-                    .Where(p => p.PropertyType.GetGenericArguments().Length == 1)
-                    .ToDictionary(p => p.PropertyType.GetGenericArguments()[0].Name, p => p);
+            // Получили  навигационные свойства коллекционного типа сущности
+            var navigationalProps = GetNavigationalProperties(typeof(T));
 
             // Проходим по каждому отношению, в котором состоит сущность типа T
             foreach (RelationData relation in tableRelations)
@@ -416,14 +401,15 @@ namespace CustomORM
                             while (reader.Read())
                             {
                                 object instance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, instance);
+                                Map(reader, ref instance);
                                 collection.Add(instance);
                             }                        
                         }
                    
                         foreach(var entity in entities)
-                        {                    
-                            int pk = (int)entity.GetType().GetProperty(relation.PK_ColumnName).GetValue(entity);
+                        {                                              
+                            var primaryKeyProp = this.GetPropertyByColumnName(relation.PK_ColumnName, entity.GetType());
+                            var pk = primaryKeyProp.GetValue(entity);
 
                             // Создаем коллекцию типа навигационного свойства
                             Type genericNavig = typeof(List<>);
@@ -435,7 +421,7 @@ namespace CustomORM
                             {
                                 int fk = (int)item.GetType().GetProperty(relation.FK_ColumnName).GetValue(item);
 
-                                if (fk == pk)
+                                if (fk == (int)pk)
                                 {
                                     collectionNavig.Add(item);
                                 }
@@ -473,7 +459,7 @@ namespace CustomORM
                             while (reader.Read())
                             {
                                 object propertyInstance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, propertyInstance);
+                                Map(reader, ref propertyInstance);
                                 collectionSub.Add(propertyInstance);
                             }
                             foreach (T entity in entities)
@@ -483,7 +469,9 @@ namespace CustomORM
 
                                 foreach (var parentEntity in collectionSub)
                                 {
-                                    int pk = (int)parentEntity.GetType().GetProperty(relation.PK_ColumnName).GetValue(parentEntity);
+                                    var pkProp = GetPropertyByColumnName(relation.PK_ColumnName, parentEntity.GetType());
+                                    int pk = (int)pkProp.GetValue(parentEntity);
+                                    
                                     if (fk == pk)
                                     {
                                         foreignProp.SetValue(entity, parentEntity);
@@ -499,24 +487,13 @@ namespace CustomORM
 
         public void LoadRelatedData(T entity)
         {
-            // Получили ID текущей сущности
-            object id = (entity.GetType().GetProperty("Id")?.GetValue(entity));
-            if (id == null)
-            {
-                var prop = entity.GetType()
-                  .GetProperties()
-                  .FirstOrDefault(p =>
-                  (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)?.ColumnName == "Id");
-
-                id = prop.GetValue(entity);
-            }
+            var idProperty = this.GetPropertyByColumnName("Id", entity.GetType());
+            var id = idProperty.GetValue(entity);
 
             // Получили её навигационные свойства коллекционного типа
-            var navigationalProps = entity.GetType().GetProperties()
-                    .Where(p => p.PropertyType.GetGenericArguments().Length == 1)
-                    .ToDictionary(p => p.PropertyType.GetGenericArguments()[0].Name, p => p);
+            var navigationalProps = this.GetNavigationalProperties(entity.GetType());
 
-            // Проходим по каждому отношению, в котором состоит ДАННАЯ сущность (Одна из N, полученных в GetAll )
+            // Проходим по каждому отношению, в котором состоит таблица ДАННОЙ сущность
             foreach (RelationData relation in tableRelations)
             {
                 if (this.tableName == relation.Parent_Table)
@@ -527,9 +504,7 @@ namespace CustomORM
                     var propertyCtor = navPropGenericArgType.GetConstructor(
                                                     BindingFlags.Instance | BindingFlags.Public,
                                                     binder: null, types: new Type[] { }, modifiers: null);
-
-
-                    
+                   
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
                         SqlCommand command = new SqlCommand();
@@ -549,7 +524,7 @@ namespace CustomORM
                             while (reader.Read())
                             {
                                 object instance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, instance);
+                                Map(reader, ref instance);
                                 constructed.GetMethod("Add").Invoke(collection, new object[] { instance });
 
                             }
@@ -578,15 +553,34 @@ namespace CustomORM
                         reader.Read();
                         if (reader.HasRows)
                         {
-                            Map(reader, propertyInstance);
+                            Map(reader, ref propertyInstance);
                         }
                         navigationalProperty.SetValue(entity, propertyInstance);
                     }
                 }
             }
         }
-     
+   
+        private PropertyInfo GetPropertyByColumnName(string columnnName, Type entityType)
+        {
+            PropertyInfo property = entityType.GetProperty(columnnName);
+            if (property == null)
+            {
+                property = entityType
+                      .GetProperties()
+                      .FirstOrDefault(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
+                      ?.ColumnName == columnnName);
+            }
+            return property;
+        }
+
+        private Dictionary<string, PropertyInfo> GetNavigationalProperties(Type type)
+        {
+            var navigationalProps = type.GetProperties()
+                    .Where(p => p.PropertyType.GetGenericArguments().Length == 1)
+                    .ToDictionary(p => p.PropertyType.GetGenericArguments()[0].Name, p => p);
+
+            return navigationalProps;
+        }
     }
-
 }
-
