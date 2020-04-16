@@ -1,16 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Data.SqlClient;
-using System.Reflection;
-using System.Data;
 using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Reflection;
 
 namespace CustomORM
 {
     public class Repository<T> : IRepository<T>
     {
-        private string connectionString;
+        private readonly string connectionString;
         private string tableName;
         private string updateCommandText;
         private string deleteCommandText;
@@ -29,46 +29,50 @@ namespace CustomORM
         #region Initialization
         private void Initialize()
         {
-            isInheritedEntity = IsInheritedEntity(typeof(T));
-            SetTableName();
-            SetTableRelations();
-            SetCommands();
+            this.isInheritedEntity = this.IsInheritedEntity(typeof(T));
+            this.SetTableName();
+            this.SetTableRelations();
+            this.SetCommands();
         }
+
         private void SetCommands()
         {
-            tableColumnNames = GetTableColumnsNames(); // All columns of the table          
-            var currentEntityColumnsOnly = tableColumnNames.Intersect(GetPropertiesNames()); // [All columns] minus [Parent columns]
+            this.tableColumnNames = this.GetTableColumnsNames(); // All columns of the table
+            var currentEntityColumnsOnly = this.tableColumnNames.Intersect(this.GetPropertiesNames()); // [All columns] minus [Parent columns]
             var columnsToSet = currentEntityColumnsOnly.Except(new string[] { "Id", "Discriminator" });
-            var columnsToGet =  tableColumnNames;
 
-            SetUpdateCommandText(columnsToSet);
-            SetInsertCommandText(columnsToSet);
-            SetDeleteCommandText();
-            SetSelectCommandText(columnsToGet);
+            this.SetUpdateCommandText(columnsToSet);
+            this.SetInsertCommandText(columnsToSet);
+            this.SetDeleteCommandText();
+            this.SetSelectCommandText();
         }
+
         private void SetUpdateCommandText(IEnumerable<string> props)
         {
-            string updateCommandText = $"UPDATE [{tableName}] SET ";
+            string updateCommandText = $"UPDATE [{this.tableName}] SET ";
             foreach (var prop in props)
             {
                 updateCommandText += $"{prop} = @{prop}, ";
             }
+
             updateCommandText = updateCommandText.TrimEnd(',', ' ');
             updateCommandText += " WHERE Id = @Id";
             this.updateCommandText = updateCommandText;
         }
+
         private void SetInsertCommandText(IEnumerable<string> props)
         {
-            string insertCommandText = $"INSERT INTO [{tableName}] (";
+            string insertCommandText = $"INSERT INTO [{this.tableName}] (";
             foreach (var prop in props)
             {
                 insertCommandText += $"{prop}, ";
             }
 
-            if (isInheritedEntity)
+            if (this.isInheritedEntity)
             {
                 insertCommandText += "Discriminator";
             }
+
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
             insertCommandText += ") VALUES ( ";
 
@@ -77,52 +81,56 @@ namespace CustomORM
                 insertCommandText += $"@{prop}, ";
             }
 
-            if (isInheritedEntity)
+            if (this.isInheritedEntity)
             {
                 insertCommandText += $"'{typeof(T).Name}'";
             }
 
             insertCommandText = insertCommandText.TrimEnd(',', ' ');
-            insertCommandText += $"); SELECT Id FROM [{tableName}] WHERE Id = @@IDENTITY";
+            insertCommandText += $"); SELECT Id FROM [{this.tableName}] WHERE Id = @@IDENTITY";
             this.insertCommandText = insertCommandText;
         }
+
         private void SetDeleteCommandText()
         {
-            string deleteCommandText = $"DELETE FROM [{tableName}] WHERE Id= @Id";
+            string deleteCommandText = $"DELETE FROM [{this.tableName}] WHERE Id= @Id";
             this.deleteCommandText = deleteCommandText;
         }
-        private void SetSelectCommandText(IEnumerable<string> props)
-        {
-            selectCommandText = $"SELECT * FROM [{tableName}]";
 
-            if (isInheritedEntity)
+        private void SetSelectCommandText()
+        {
+            this.selectCommandText = $"SELECT * FROM [{this.tableName}]";
+
+            if (this.isInheritedEntity)
             {
-                selectCommandText += $" WHERE Discriminator = '{typeof(T).Name}'";
+                this.selectCommandText += $" WHERE Discriminator = '{typeof(T).Name}'";
             }
         }
+
         private bool IsInheritedEntity(Type entityType)
         {
-            return entityType.BaseType.FullName == typeof(object).FullName ? false : true;   
+            return entityType.BaseType.FullName == typeof(object).FullName ? false : true;
         }
+
         private void SetTableName()
         {
             var type = typeof(T);
-            if (isInheritedEntity)
+            if (this.isInheritedEntity)
             {
                 type = type.BaseType;
             }
 
-             var tableAttribute = type
-                ?.GetCustomAttributes(typeof(TableAttribute), false).FirstOrDefault() as TableAttribute;
+            var tableAttribute = type
+               ?.GetCustomAttributes(typeof(TableAttribute), false).FirstOrDefault() as TableAttribute;
 
-            tableName = tableAttribute == null ? type.Name : tableAttribute.TableName;
+            this.tableName = tableAttribute == null ? type.Name : tableAttribute.TableName;
         }
 
         private IEnumerable<string> GetTableColumnsNames()
         {
-            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{tableName}'";
+            string selectFieldsNamesCommandText = $"SELECT INFORMATION_SCHEMA.COLUMNS.COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= '{this.tableName}'";
             List<string> columnNames = new List<string>();
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
                 SqlCommand command = new SqlCommand(selectFieldsNamesCommandText, connection);
                 connection.Open();
@@ -131,14 +139,17 @@ namespace CustomORM
                 {
                     columnNames.Add(reader["COLUMN_NAME"] as string);
                 }
+
                 reader.Close();
             }
+
             return columnNames;
         }
+
         private IEnumerable<string> GetPropertiesNames()
         {
             Type entityType = this.GetType().GetGenericArguments().FirstOrDefault();
-            PropertyInfo[] properties = entityType.GetProperties( BindingFlags.Instance | BindingFlags.Public);
+            PropertyInfo[] properties = entityType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
             string[] propertyNames = new string[properties.Length];
 
             for (int i = 0; i < properties.Length; i++)
@@ -149,29 +160,32 @@ namespace CustomORM
                     propertyNames[i] = properties[i].Name;
                 }
             }
+
             return propertyNames;
         }
 
         private void SetCommandParameters(SqlCommand command, T entity)
         {
-            foreach (var columnName in tableColumnNames)
+            foreach (var columnName in this.tableColumnNames)
             {
-                var property = GetPropertyByColumnName(columnName, entity.GetType());
+                var property = this.GetPropertyByColumnName(columnName, entity.GetType());
                 if (property != null)
                 {
                     object value = property.GetValue(entity);
                     command.Parameters.AddWithValue("@" + columnName, value);
-                }               
+                }
             }
         }
 
         private void SetTableRelations()
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand("sp_getFkData", connection);
-                command.CommandType = System.Data.CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@tableName", tableName);
+                SqlCommand command = new SqlCommand("sp_getFkData", connection)
+                {
+                    CommandType = System.Data.CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@tableName", this.tableName);
 
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
@@ -192,34 +206,37 @@ namespace CustomORM
         #region CRUD
         public void Add(T entity)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand(insertCommandText, connection);
-                SetCommandParameters(command, entity);
+                SqlCommand command = new SqlCommand(this.insertCommandText, connection);
+                this.SetCommandParameters(command, entity);
 
                 connection.Open();
                 object id = command.ExecuteScalar();
 
-                PropertyInfo idProperty = GetPropertyByColumnName("Id", entity.GetType());
+                PropertyInfo idProperty = this.GetPropertyByColumnName("Id", entity.GetType());
                 idProperty.SetValue(entity, id);
             }
         }
 
         public void Delete(T entity)
         {
-            if (entity == null) throw new ArgumentNullException();
+            if (entity == null)
+            {
+                throw new ArgumentNullException();
+            }
 
-            var idProperty = GetPropertyByColumnName("Id", entity.GetType());
+            var idProperty = this.GetPropertyByColumnName("Id", entity.GetType());
             int id = (int)idProperty.GetValue(entity);
 
-            Delete(id);
+            this.Delete(id);
         }
 
         public void Delete(int id)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand(deleteCommandText, connection);
+                SqlCommand command = new SqlCommand(this.deleteCommandText, connection);
                 command.Parameters.AddWithValue("Id", id);
                 connection.Open();
                 command.ExecuteNonQuery();
@@ -228,30 +245,32 @@ namespace CustomORM
 
         public T Find(int id, bool loadRelatedData)
         {
-            T entity = Find(id);
+            T entity = this.Find(id);
 
             if (loadRelatedData == true)
             {
-                LoadRelatedData(entity);
+                this.LoadRelatedData(entity);
             }
+
             return entity;
         }
 
         public T Find(int id)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand();
-                
-                command.CommandText = isInheritedEntity ? selectCommandText + "AND Id = @Id" : selectCommandText + "WHERE Id = @Id"; 
-                command.Connection = connection;
+                SqlCommand command = new SqlCommand
+                {
+                    CommandText = this.isInheritedEntity ? this.selectCommandText + "AND Id = @Id" : this.selectCommandText + "WHERE Id = @Id",
+                    Connection = connection
+                };
                 command.Parameters.AddWithValue("@Id", id);
 
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
                 reader.Read();
 
-                T entity = Map<T>(reader);
+                T entity = this.Map<T>(reader);
                 reader.Close();
                 return entity;
             }
@@ -259,30 +278,34 @@ namespace CustomORM
 
         public IEnumerable<T> GetAll(bool loadRelatedData = false)
         {
-            var entities = GetAll();
+            var entities = this.GetAll();
             if (loadRelatedData == true)
             {
-                LoadRelatedData(entities);     
+                this.LoadRelatedData(entities);
             }
+
             return entities;
         }
 
         public IEnumerable<T> GetAll()
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand();
-                command.CommandText = selectCommandText;
-                command.Connection = connection;
+                SqlCommand command = new SqlCommand
+                {
+                    CommandText = this.selectCommandText,
+                    Connection = connection
+                };
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
 
                 List<T> entities = new List<T>();
                 while (reader.Read())
                 {
-                    T entity = Map<T>(reader);
+                    T entity = this.Map<T>(reader);
                     entities.Add(entity);
                 }
+
                 reader.Close();
                 return entities;
             }
@@ -290,10 +313,10 @@ namespace CustomORM
 
         public void Update(T entity)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
             {
-                SqlCommand command = new SqlCommand(updateCommandText, connection);
-                SetCommandParameters(command, entity);
+                SqlCommand command = new SqlCommand(this.updateCommandText, connection);
+                this.SetCommandParameters(command, entity);
                 connection.Open();
                 command.ExecuteNonQuery();
             }
@@ -305,14 +328,16 @@ namespace CustomORM
         {
             // Check if the entity is of inherited type
             string discriminator = string.Empty;
-            object entity=null;
+            object entity = null;
             try
             {
-                discriminator = (string) reader["Discriminator"];
+                discriminator = (string)reader["Discriminator"];
             }
-            catch(Exception e){   }
-           
-            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type  
+            catch (Exception)
+            {
+            }
+
+            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type
             if (!string.IsNullOrEmpty(discriminator))
             {
                 string @namespace = typeof(T).Namespace;
@@ -332,6 +357,7 @@ namespace CustomORM
                 var property = this.GetPropertyByColumnName(columnName, entity.GetType());
                 property?.SetValue(entity, reader[i]);
             }
+
             return (T)entity;
         }
 
@@ -343,8 +369,11 @@ namespace CustomORM
             {
                 discriminator = (string)reader["Discriminator"];
             }
-            catch (Exception e){   }
-            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type  
+            catch (Exception)
+            {
+            }
+
+            // If there is a discriminator presented, create entity not of a type T, but of the discriminator type
             if (!string.IsNullOrEmpty(discriminator))
             {
                 string @namespace = entity.GetType().Namespace;
@@ -358,209 +387,201 @@ namespace CustomORM
             for (int i = 0; i < reader.FieldCount; i++)
             {
                 string columnName = reader.GetName(i);
-                var property = GetPropertyByColumnName(columnName, entity.GetType());
+                var property = this.GetPropertyByColumnName(columnName, entity.GetType());
                 property?.SetValue(entity, reader[i]);
             }
-        }     
+        }
         #endregion
-       
-        public void  LoadRelatedData(IEnumerable<T> entities)
-        {
-            // Получили  навигационные свойства коллекционного типа сущности
-            var navigationalProps = GetNavigationalProperties(typeof(T));
 
-            // Проходим по каждому отношению, в котором состоит сущность типа T
-            foreach (RelationData relation in tableRelations)
+        public void LoadRelatedData(IEnumerable<T> entities)
+        {
+            foreach (RelationData relation in this.tableRelations)
             {
                 if (this.tableName == relation.Parent_Table)
                 {
-                    var navigProperty = navigationalProps[relation.Child_Table];
-                    Type navPropGenericArgType = navigProperty.PropertyType.GenericTypeArguments[0];
-
-                    var propertyCtor = navPropGenericArgType.GetConstructor(
-                                                    BindingFlags.Instance | BindingFlags.Public,
-                                                    binder: null, types: new Type[] { }, modifiers: null);
-
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        SqlCommand command = new SqlCommand();
-                        command.Connection = connection;
-                        command.CommandText = $"SELECT * FROM [{relation.Child_Table}] WHERE {relation.FK_ColumnName} IS NOT NULL";
-                        connection.Open();
-
-                        Type generic = typeof(List<>);
-                        Type[] typeArgs = { navPropGenericArgType };
-                        Type constructed = generic.MakeGenericType(typeArgs);
-
-                        IList collection = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
-
-                        //Заполнение collection
-                        SqlDataReader reader = command.ExecuteReader();
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                object instance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, ref instance);
-                                collection.Add(instance);
-                            }                        
-                        }
-                   
-                        foreach(var entity in entities)
-                        {                                              
-                            var primaryKeyProp = this.GetPropertyByColumnName(relation.PK_ColumnName, entity.GetType());
-                            var pk = primaryKeyProp.GetValue(entity);
-
-                            // Создаем коллекцию типа навигационного свойства
-                            Type genericNavig = typeof(List<>);
-                            Type[] typeArgsNavig = { navPropGenericArgType };
-                            Type constructedNavig = generic.MakeGenericType(typeArgs);                       
-                            IList collectionNavig = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
-
-                            foreach (var item in collection)
-                            {
-                                int fk = (int)item.GetType().GetProperty(relation.FK_ColumnName).GetValue(item);
-
-                                if (fk == (int)pk)
-                                {
-                                    collectionNavig.Add(item);
-                                }
-                            }
-                            navigProperty.SetValue(entity, collectionNavig);
-                        }
-                    }
+                    this.SetChildsCollection(ref entities, relation);
                 }
                 else if (this.tableName == relation.Child_Table)
                 {
-                    var navigationalProperty = typeof(T).GetProperty(relation.Parent_Table);
-
-                    var propertyCtor = navigationalProperty.PropertyType.GetConstructor(
-                                                    BindingFlags.Instance | BindingFlags.Public,
-                                                    binder: null, types: new Type[] { }, modifiers: null);
-
-                    Type genericSub = typeof(List<>);
-                    Type[] typeArgsSub = { navigationalProperty.PropertyType };
-                    Type constructedSub = genericSub.MakeGenericType(typeArgsSub);
-
-                    // List<someEntity>
-                    IList collectionSub = constructedSub.GetConstructor(new Type[] { }).Invoke(new object[] { }) as IList;
-
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        SqlCommand command = new SqlCommand();
-                        command.Connection = connection;
-                        command.CommandText = $"SELECT * FROM [{relation.Parent_Table}]";
-                        connection.Open();
-
-                        SqlDataReader reader = command.ExecuteReader();
-                       
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                object propertyInstance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, ref propertyInstance);
-                                collectionSub.Add(propertyInstance);
-                            }
-                            foreach (T entity in entities)
-                            {
-                                int fk = (int)typeof(T).GetProperty(relation.FK_ColumnName).GetValue(entity);
-                                var foreignProp = typeof(T).GetProperty(relation.Parent_Table);
-
-                                foreach (var parentEntity in collectionSub)
-                                {
-                                    var pkProp = GetPropertyByColumnName(relation.PK_ColumnName, parentEntity.GetType());
-                                    int pk = (int)pkProp.GetValue(parentEntity);
-                                    
-                                    if (fk == pk)
-                                    {
-                                        foreignProp.SetValue(entity, parentEntity);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }   
+                    this.SetParentProperty(ref entities, relation);
                 }
             }
         }
 
         public void LoadRelatedData(T entity)
         {
-            var idProperty = this.GetPropertyByColumnName("Id", entity.GetType());
-            var id = idProperty.GetValue(entity);
-
-            // Получили её навигационные свойства коллекционного типа
-            var navigationalProps = this.GetNavigationalProperties(entity.GetType());
-
-            // Проходим по каждому отношению, в котором состоит таблица ДАННОЙ сущность
-            foreach (RelationData relation in tableRelations)
+            foreach (RelationData relation in this.tableRelations)
             {
                 if (this.tableName == relation.Parent_Table)
                 {
-                    var navigProperty = navigationalProps[relation.Child_Table];
-                    Type navPropGenericArgType = navigProperty.PropertyType.GenericTypeArguments[0];
-
-                    var propertyCtor = navPropGenericArgType.GetConstructor(
-                                                    BindingFlags.Instance | BindingFlags.Public,
-                                                    binder: null, types: new Type[] { }, modifiers: null);
-                   
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        SqlCommand command = new SqlCommand();
-                        command.Connection = connection;
-                        command.CommandText = $"SELECT * FROM [{relation.Child_Table}] WHERE {relation.FK_ColumnName} = @Id";
-                        command.Parameters.AddWithValue("@Id", id);
-                        connection.Open();
-
-                        Type generic = typeof(List<>);
-                        Type[] typeArgs = { navPropGenericArgType };
-                        Type constructed = generic.MakeGenericType(typeArgs);
-                        object collection = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { });
-
-                        SqlDataReader reader = command.ExecuteReader();
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                object instance = propertyCtor.Invoke(new object[] { });
-                                Map(reader, ref instance);
-                                constructed.GetMethod("Add").Invoke(collection, new object[] { instance });
-
-                            }
-                        }
-                        navigProperty.SetValue(entity, collection);
-                    }
+                    this.SetChildsCollection(ref entity, relation);
                 }
                 else if (this.tableName == relation.Child_Table)
                 {
-                    var navigationalProperty = entity.GetType().GetProperty(relation.Parent_Table);
+                    this.SetParentProperty(ref entity, relation);
+                }
+            }
+        }
 
-                    var propertyCtor = navigationalProperty.PropertyType.GetConstructor(
-                                                    BindingFlags.Instance | BindingFlags.Public,
-                                                    binder: null, types: new Type[] { }, modifiers: null);
+        private void SetParentProperty(ref IEnumerable<T> entities, RelationData relation)
+        {
+            PropertyInfo navigationalProperty = typeof(T).GetProperty(relation.Parent_Table);
+            Type navPropertyType = navigationalProperty.PropertyType;
 
-                    object propertyInstance = propertyCtor.Invoke(new object[] { });
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
+            {
+                SqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM [{relation.Parent_Table}]";
+                connection.Open();
 
-                    using (SqlConnection connection = new SqlConnection(connectionString))
+                SqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    IList collectionSub = this.CreateListOfType(navPropertyType) as IList;
+                    while (reader.Read())
                     {
-                        SqlCommand command = new SqlCommand();
-                        command.Connection = connection;
-                        command.CommandText = $"SELECT * FROM [{relation.Parent_Table}] WHERE {relation.PK_ColumnName} = @Id";
-                        command.Parameters.AddWithValue("@Id", id);
-                        connection.Open();
-                        SqlDataReader reader = command.ExecuteReader();
-                        reader.Read();
-                        if (reader.HasRows)
+                        object propertyInstance = this.CreateInstanceFromType(navPropertyType);
+                        this.Map(reader, ref propertyInstance);
+                        collectionSub.Add(propertyInstance);
+                    }
+
+                    foreach (T entity in entities)
+                    {
+                        int fk = (int)typeof(T).GetProperty(relation.FK_ColumnName).GetValue(entity);
+                        PropertyInfo foreignProp = typeof(T).GetProperty(relation.Parent_Table);
+
+                        foreach (var parentEntity in collectionSub)
                         {
-                            Map(reader, ref propertyInstance);
+                            int pk = (int)this.GetPropertyByColumnName("Id", parentEntity.GetType()).GetValue(parentEntity);
+                            if (fk == pk)
+                            {
+                                foreignProp.SetValue(entity, parentEntity);
+                                break;
+                            }
                         }
-                        navigationalProperty.SetValue(entity, propertyInstance);
                     }
                 }
             }
         }
-   
+
+        private void SetParentProperty(ref T entity, RelationData relation)
+        {
+            var id = this.GetPropertyByColumnName("Id", entity.GetType()).GetValue(entity);
+
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
+            {
+                SqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM [{relation.Parent_Table}] WHERE {relation.PK_ColumnName} = {id}";
+                connection.Open();
+
+                SqlDataReader reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    PropertyInfo navigationalProperty = entity.GetType().GetProperty(relation.Parent_Table);
+                    object propertyInstance = this.CreateInstanceFromType(navigationalProperty.PropertyType);
+                    this.Map(reader, ref propertyInstance);
+                    navigationalProperty.SetValue(entity, propertyInstance);
+                }
+            }
+        }
+
+        private void SetChildsCollection(ref IEnumerable<T> entities, RelationData relation)
+        {
+            var navigationalProps = this.GetNavigationalProperties(typeof(T)); // Navigational props of collection type
+
+            PropertyInfo navigProperty = navigationalProps[relation.Child_Table];
+            Type navPropGenericArgType = navigProperty.PropertyType.GenericTypeArguments[0];
+
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
+            {
+                SqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM [{relation.Child_Table}] WHERE {relation.FK_ColumnName} IS NOT NULL";
+
+                connection.Open();
+
+                SqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    IList collection = this.CreateListOfType(navPropGenericArgType) as IList;
+                    while (reader.Read())
+                    {
+                        object instance = this.CreateInstanceFromType(navPropGenericArgType);
+                        this.Map(reader, ref instance);
+                        collection.Add(instance);
+                    }
+
+                    foreach (var entity in entities)
+                    {
+                        int pk = (int)this.GetPropertyByColumnName("Id", entity.GetType()).GetValue(entity);
+
+                        IList collectionNavig = this.CreateListOfType(navPropGenericArgType) as IList;
+
+                        foreach (var item in collection)
+                        {
+                            int fk = (int)this.GetPropertyByColumnName(relation.FK_ColumnName, item.GetType()).GetValue(item);
+                            if (fk == pk)
+                            {
+                                collectionNavig.Add(item);
+                            }
+                        }
+
+                        navigProperty.SetValue(entity, collectionNavig);
+                    }
+                }
+            }
+        }
+
+        private void SetChildsCollection(ref T entity, RelationData relation)
+        {
+            var id = this.GetPropertyByColumnName("Id", entity.GetType()).GetValue(entity);
+            var navigationalProps = this.GetNavigationalProperties(entity.GetType()); // Navigational props of collection type
+
+            using (SqlConnection connection = new SqlConnection(this.connectionString))
+            {
+                SqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM [{relation.Child_Table}] WHERE {relation.FK_ColumnName} = {id}";
+                connection.Open();
+
+                SqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    PropertyInfo navigProperty = navigationalProps[relation.Child_Table];
+                    Type navPropGenericArgType = navigProperty.PropertyType.GenericTypeArguments[0];
+
+                    IList collection = this.CreateListOfType(navPropGenericArgType) as IList;
+                    while (reader.Read())
+                    {
+                        object instance = this.CreateInstanceFromType(navPropGenericArgType);
+                        this.Map(reader, ref instance);
+                        collection.Add(instance);
+                    }
+
+                    navigProperty.SetValue(entity, collection);
+                }
+            }
+        }
+
+        private object CreateListOfType(Type type)
+        {
+            Type generic = typeof(List<>);
+            Type[] typeArgs = { type };
+            Type constructed = generic.MakeGenericType(typeArgs);
+            object list = constructed.GetConstructor(new Type[] { }).Invoke(new object[] { });
+            return list;
+        }
+
+        private object CreateInstanceFromType(Type type)
+        {
+            var propertyCtor = type.GetConstructor(
+                                                   BindingFlags.Instance | BindingFlags.Public,
+                                                   binder: null,
+                                                   types: new Type[] { },
+                                                   modifiers: null);
+
+            object instance = propertyCtor.Invoke(new object[] { });
+            return instance;
+        }
+
         private PropertyInfo GetPropertyByColumnName(string columnnName, Type entityType)
         {
             PropertyInfo property = entityType.GetProperty(columnnName);
@@ -571,6 +592,7 @@ namespace CustomORM
                       .FirstOrDefault(p => (p.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute)
                       ?.ColumnName == columnnName);
             }
+
             return property;
         }
 

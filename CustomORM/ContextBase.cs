@@ -1,22 +1,24 @@
 ﻿using System;
-using System.Linq;
 using System.Configuration;
-using System.Reflection;
 using System.Data.SqlClient;
+using System.Linq;
+using System.Reflection;
 
 namespace CustomORM
 {
     public abstract class ContextBase
     {
-        protected string connectionString;
+        protected string ConnectionString { get; set; }
 
         private void CreateRelationDataProc()
         {
-            using(SqlConnection connection = new SqlConnection(connectionString))
+            using (SqlConnection connection = new SqlConnection(this.ConnectionString))
             {
-                SqlCommand command = new SqlCommand();
-                command.Connection = connection;
-                command.CommandText = ORMResource.sp_getFkData_Check_Existense;
+                SqlCommand command = new SqlCommand
+                {
+                    Connection = connection,
+                    CommandText = ORMResource.sp_getFkData_Check_Existense
+                };
                 connection.Open();
 
                 int procExistence = (int)command.ExecuteScalar();
@@ -31,21 +33,23 @@ namespace CustomORM
 
         protected ContextBase(string connectionStringName)
         {
-            this.connectionString = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
+            this.ConnectionString = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
             this.CreateRelationDataProc();
             var type = this.GetType();
 
             PropertyInfo[] inheritorDbProperties = type.GetProperties()
                 .Where(p => p.PropertyType.Name == typeof(Repository<>).Name).ToArray();
 
-            foreach (PropertyInfo contextProperty in inheritorDbProperties) 
+            foreach (PropertyInfo contextProperty in inheritorDbProperties)
             {
-                Type propertyType = contextProperty.PropertyType;          
+                Type propertyType = contextProperty.PropertyType;
                 var propertyCtor = propertyType.GetConstructor(
                                 BindingFlags.Instance | BindingFlags.NonPublic,
-                                binder: null, types: new Type[] { typeof(string) }, modifiers: null);
+                                binder: null,
+                                types: new Type[] { typeof(string) },
+                                modifiers: null);
 
-                object propertyInstance = propertyCtor.Invoke(new object[] { connectionString });
+                object propertyInstance = propertyCtor.Invoke(new object[] { this.ConnectionString });
                 contextProperty.SetValue(this, propertyInstance);
             }
         }
